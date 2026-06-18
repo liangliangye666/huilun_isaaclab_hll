@@ -13,11 +13,21 @@ from . import agents
 
 
 gym.register(
-    id="Template-Huilun-Isaaclab-v0",
+    id="Huilun-L5A-Balance-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
-        "env_cfg_entry_point": f"{__name__}.huilun_isaaclab_env_cfg:HuilunIsaaclabEnvCfg",
+        "env_cfg_entry_point": f"{__name__}.balance_env_cfg:L5ABalanceEnvCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:PPORunnerCfg",
+    },
+)
+
+gym.register(
+    id="Huilun-L5A-Balance-Play-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.balance_env_cfg:L5ABalanceEnvCfg_PLAY",
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:PPORunnerCfg",
     },
 )
