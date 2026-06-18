@@ -54,14 +54,24 @@ def nominal_wheel_height_exp(
     target_base_height: float,
     wheel_radius: float,
     std: float,
+    speed_attenuation_std: float,
+    command_name: str,
     asset_cfg: SceneEntityCfg,
 ) -> torch.Tensor:
-    """Reward wheels staying near the nominal height in the base frame."""
+    """Reward wheels staying near the nominal height in the base frame.
+
+    The reward is attenuated by the commanded speed so that height precision
+    is relaxed at higher velocities (same behaviour as the original IsaacGym task).
+    """
     asset: Articulation = env.scene[asset_cfg.name]
     wheel_pos_b = _body_pos_b(asset, asset_cfg.body_ids)
     target_wheel_z_b = -(target_base_height - wheel_radius)
     height_error = torch.square(target_wheel_z_b - wheel_pos_b[..., 2])
-    return torch.mean(torch.exp(-height_error / std**2), dim=1)
+    base_reward = torch.mean(torch.exp(-height_error / std**2), dim=1)
+    # speed-dependent attenuation
+    vel_cmd = env.command_manager.get_command(command_name)
+    vel_norm = torch.norm(vel_cmd[:, :3], dim=1)
+    return base_reward * torch.exp(-torch.square(vel_norm) / speed_attenuation_std**2)
 
 
 def leg_y_symmetry_exp(env: ManagerBasedRLEnv, std: float, asset_cfg: SceneEntityCfg) -> torch.Tensor:
@@ -99,3 +109,36 @@ def wheel_distance_range_l1(
     lower_error = torch.clamp(min_distance - wheel_distance_xy, min=0.0)
     upper_error = torch.clamp(wheel_distance_xy - max_distance, min=0.0)
     return lower_error + upper_error
+
+
+def action_smooth_l2(env: ManagerBasedRLEnv) -> torch.Tensor:
+    """Penalize second-order action rate (action smoothness).
+
+    Computes the L2 norm of (a_t - 2*a_{t-1} + a_{t-2}), discouraging jerky
+    action trajectories. Matches the ``_reward_action_smooth`` from the
+    original IsaacGym L5A balance task.
+
+    .. note::
+        Maintains a persistent ``_prev_prev_action`` buffer on the environment.
+        The penalty is zeroed for the first two steps after reset.
+    """
+    # -- allocate persistent buffer on first call -------------------------------
+    if not hasattr(env, "_prev_prev_action"):
+        env._prev_prev_action = torch.zeros(
+            env.num_envs, env.action_manager.action.shape[-1], device=env.device
+        )
+
+    # -- early-episode masking (prev_prev is invalid for steps 0, 1) ------------
+    is_early = env.episode_length_buf < 2
+    prev_prev = env._prev_prev_action.clone()
+    prev_prev[is_early] = 0.0
+
+    penalty = torch.sum(
+        torch.square(env.action_manager.action - 2 * env.action_manager.prev_action + prev_prev),
+        dim=1,
+    )
+    penalty[is_early] = 0.0
+
+    # -- rotate buffer for next step --------------------------------------------
+    env._prev_prev_action = env.action_manager.prev_action.clone()
+    return penalty

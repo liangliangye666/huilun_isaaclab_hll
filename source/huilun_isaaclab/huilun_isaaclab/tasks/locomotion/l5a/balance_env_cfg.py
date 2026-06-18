@@ -237,6 +237,19 @@ class EventCfg:
             "velocity_range": (-0.05, 0.05),
         },
     )
+    push_robot = EventTerm(
+        func=mdp.push_by_setting_velocity,
+        mode="interval",
+        interval_range_s=(3.0, 8.0),
+        params={
+            "asset_cfg": SceneEntityCfg("robot"),
+            "velocity_range": {
+                "x": (-0.5, 0.5),
+                "y": (-0.5, 0.5),
+                "yaw": (-1.0, 1.0),
+            },
+        },
+    )
 
 
 @configclass
@@ -264,6 +277,8 @@ class RewardsCfg:
             "target_base_height": 0.645,
             "wheel_radius": 0.127,
             "std": math.sqrt(0.005),
+            "speed_attenuation_std": math.sqrt(0.5),
+            "command_name": "base_velocity",
         },
     )
     leg_symmetry = RewTerm(
@@ -299,6 +314,7 @@ class RewardsCfg:
     torques = RewTerm(func=mdp.joint_torques_l2, weight=-0.00016)
     dof_acc = RewTerm(func=mdp.joint_acc_l2, weight=-1.5e-7)
     action_rate = RewTerm(func=mdp.action_rate_l2, weight=-0.03)
+    action_smooth = RewTerm(func=mdp.action_smooth_l2, weight=-0.03)
     dof_pos_limits = RewTerm(
         func=mdp.joint_pos_limits,
         weight=-2.0,
