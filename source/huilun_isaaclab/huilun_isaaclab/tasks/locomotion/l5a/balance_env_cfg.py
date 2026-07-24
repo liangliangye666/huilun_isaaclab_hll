@@ -40,7 +40,8 @@ WHEEL_JOINT_NAMES = ["left_wheel_joint", "right_wheel_joint"]
 ACTUATED_JOINT_NAMES = LEG_JOINT_NAMES + WHEEL_JOINT_NAMES
 WHEEL_BODY_NAMES = ["left_wheel_link", "right_wheel_link"]
 
-
+# 建议参考/mnt/isaacdata/IsaacLab/source/isaaclab_assets/isaaclab_assets/robots/cartpole.py，将机器人配置放在assets里面的robots去
+# Cartpole 文件适合理解最小任务结构，但真实机器人迁移还应重点参考 Go2 locomotion，因为它包含地形、接触传感器、commands、域随机化、奖励、终止和 curriculum。
 L5A_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
         usd_path=str(L5A_USD_PATH),
@@ -121,6 +122,7 @@ class L5ABalanceSceneCfg(InteractiveSceneCfg):
         prim_path="/World/DomeLight",
         spawn=sim_utils.DomeLightCfg(color=(0.9, 0.9, 0.9), intensity=500.0),
     )
+    # 高度扫描器    height_scanner = RayCasterCfg(...)  为什么没有激活？？？
 
 
 @configclass
@@ -130,9 +132,9 @@ class CommandsCfg:
     base_velocity = mdp.UniformVelocityCommandCfg(
         asset_name="robot",
         resampling_time_range=(10.0, 10.0),
-        rel_standing_envs=0.0,
+        rel_standing_envs=0.0,          # 这里连站立率都没有，应该就是导致无法静止站立的原因？？？
         rel_heading_envs=0.0,
-        heading_command=False,
+        heading_command=False,          # 正常来说应该是要使用PD控制朝向的，确认是不是false？？？
         debug_vis=False,
         ranges=mdp.UniformVelocityCommandCfg.Ranges(
             lin_vel_x=(-0.5, 0.5),
@@ -152,7 +154,7 @@ class ActionsCfg:
         joint_names=LEG_JOINT_NAMES,
         scale=0.25,
         use_default_offset=True,
-        preserve_order=True,
+        preserve_order=True,    # preserve_order=True 保证策略动作维度与给出的关节名顺序一致。
     )
     wheel_vel = mdp.JointVelocityActionCfg(
         asset_name="robot",
@@ -378,7 +380,7 @@ class L5ABalanceEnvCfg_PLAY(L5ABalanceEnvCfg):
 
     def __post_init__(self) -> None:
         super().__post_init__()
-        self.scene.num_envs = 50
+        self.scene.num_envs = 10
         self.observations.policy.enable_corruption = False
         self.commands.base_velocity.debug_vis = True
         self.events.physics_material = None
