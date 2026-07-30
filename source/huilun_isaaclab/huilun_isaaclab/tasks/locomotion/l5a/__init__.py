@@ -23,6 +23,26 @@ gym.register(
 )
 
 gym.register(
+    id="Huilun-L5A-WF-Flat-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.wf_flat_env_cfg:L5AWFFlatEnvCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:L5AWFPPORunnerCfg",
+    },
+)
+
+gym.register(
+    id="Huilun-L5A-WF-Flat-Play-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.wf_flat_env_cfg:L5AWFFlatEnvCfg_PLAY",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:L5AWFPPORunnerCfg",
+    },
+)
+
+gym.register(
     id="Huilun-L5A-Balance-Play-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,

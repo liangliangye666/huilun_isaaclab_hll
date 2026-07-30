@@ -6,10 +6,8 @@
 from __future__ import annotations
 
 import math
-from pathlib import Path
 
 import isaaclab.sim as sim_utils
-from isaaclab.actuators import ImplicitActuatorCfg
 from isaaclab.assets import ArticulationCfg, AssetBaseCfg
 from isaaclab.envs import ManagerBasedRLEnvCfg
 from isaaclab.managers import EventTermCfg as EventTerm
@@ -23,78 +21,15 @@ from isaaclab.sensors import ContactSensorCfg
 from isaaclab.utils import configclass
 from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 
-from . import mdp
-
-PROJECT_ROOT = Path(__file__).resolve().parents[6]
-L5A_USD_PATH = PROJECT_ROOT / "resources" / "robots" / "l5a" / "usd" / "l5a20260521.usd"
-
-LEG_JOINT_NAMES = [
-    "left_hip_roll_joint",
-    "left_hip_pitch_joint",
-    "left_knee_joint",
-    "right_hip_roll_joint",
-    "right_hip_pitch_joint",
-    "right_knee_joint",
-]
-WHEEL_JOINT_NAMES = ["left_wheel_joint", "right_wheel_joint"]
-ACTUATED_JOINT_NAMES = LEG_JOINT_NAMES + WHEEL_JOINT_NAMES
-WHEEL_BODY_NAMES = ["left_wheel_link", "right_wheel_link"]
-
-# 建议参考/mnt/isaacdata/IsaacLab/source/isaaclab_assets/isaaclab_assets/robots/cartpole.py，将机器人配置放在assets里面的robots去
-# Cartpole 文件适合理解最小任务结构，但真实机器人迁移还应重点参考 Go2 locomotion，因为它包含地形、接触传感器、commands、域随机化、奖励、终止和 curriculum。
-L5A_CFG = ArticulationCfg(
-    spawn=sim_utils.UsdFileCfg(
-        usd_path=str(L5A_USD_PATH),
-        activate_contact_sensors=True,
-        rigid_props=sim_utils.RigidBodyPropertiesCfg(
-            disable_gravity=False,
-            retain_accelerations=False,
-            linear_damping=0.0,
-            angular_damping=0.0,
-            max_linear_velocity=1000.0,
-            max_angular_velocity=1000.0,
-            max_depenetration_velocity=1.0,
-        ),
-        articulation_props=sim_utils.ArticulationRootPropertiesCfg(
-            enabled_self_collisions=False,
-            solver_position_iteration_count=4,
-            solver_velocity_iteration_count=0,
-        ),
-    ),
-    init_state=ArticulationCfg.InitialStateCfg(
-        pos=(0.0, 0.0, 0.695),
-        rot=(1.0, 0.0, 0.0, 0.0),
-        joint_pos={
-            "left_hip_roll_joint": 0.0523599,
-            "left_hip_pitch_joint": 0.261799,
-            "left_knee_joint": -0.560251,
-            "left_wheel_joint": 0.0,
-            "right_hip_roll_joint": 0.0523599,
-            "right_hip_pitch_joint": 0.261799,
-            "right_knee_joint": -0.560251,
-            "right_wheel_joint": 0.0,
-        },
-        joint_vel={".*": 0.0},
-    ),
-    soft_joint_pos_limit_factor=0.95,
-    actuators={
-        "legs": ImplicitActuatorCfg(
-            joint_names_expr=LEG_JOINT_NAMES,
-            effort_limit_sim={".*hip.*": 90.0, ".*knee.*": 130.0},
-            velocity_limit_sim={".*hip.*": 16.433, ".*knee.*": 14.653},
-            stiffness={".*hip_roll.*": 40.0, ".*hip_pitch.*": 40.0, ".*knee.*": 80.0},
-            damping={".*hip_roll.*": 2.0, ".*hip_pitch.*": 2.0, ".*knee.*": 2.0},
-        ),
-        "wheels": ImplicitActuatorCfg(
-            joint_names_expr=WHEEL_JOINT_NAMES,
-            effort_limit_sim=90.0,
-            velocity_limit_sim=16.433,
-            stiffness=0.0,
-            damping=1.5,
-        ),
-    },
+from huilun_isaaclab.assets.l5a import (
+    ACTUATED_JOINT_NAMES,
+    L5A_CFG,
+    LEG_JOINT_NAMES,
+    WHEEL_BODY_NAMES,
+    WHEEL_JOINT_NAMES,
 )
-"""L5A wheel-legged robot configuration migrated from the IsaacGym balance task."""
+
+from . import mdp
 
 
 @configclass
@@ -132,9 +67,9 @@ class CommandsCfg:
     base_velocity = mdp.UniformVelocityCommandCfg(
         asset_name="robot",
         resampling_time_range=(10.0, 10.0),
-        rel_standing_envs=0.0,          # 这里连站立率都没有，应该就是导致无法静止站立的原因？？？
+        rel_standing_envs=0.0,  # 这里连站立率都没有，应该就是导致无法静止站立的原因？？？
         rel_heading_envs=0.0,
-        heading_command=False,          # 正常来说应该是要使用PD控制朝向的，确认是不是false？？？
+        heading_command=False,  # 正常来说应该是要使用PD控制朝向的，确认是不是false？？？
         debug_vis=False,
         ranges=mdp.UniformVelocityCommandCfg.Ranges(
             lin_vel_x=(-0.5, 0.5),
@@ -154,7 +89,7 @@ class ActionsCfg:
         joint_names=LEG_JOINT_NAMES,
         scale=0.25,
         use_default_offset=True,
-        preserve_order=True,    # preserve_order=True 保证策略动作维度与给出的关节名顺序一致。
+        preserve_order=True,  # preserve_order=True 保证策略动作维度与给出的关节名顺序一致。
     )
     wheel_vel = mdp.JointVelocityActionCfg(
         asset_name="robot",

@@ -43,9 +43,7 @@ def track_lin_vel_x_exp(
 ) -> torch.Tensor:
     """Reward tracking of the x linear velocity command in the base frame."""
     asset: RigidObject = env.scene[asset_cfg.name]
-    lin_vel_error = torch.square(
-        env.command_manager.get_command(command_name)[:, 0] - asset.data.root_lin_vel_b[:, 0]
-    )
+    lin_vel_error = torch.square(env.command_manager.get_command(command_name)[:, 0] - asset.data.root_lin_vel_b[:, 0])
     return torch.exp(-lin_vel_error / std**2)
 
 
@@ -111,6 +109,82 @@ def wheel_distance_range_l1(
     return lower_error + upper_error
 
 
+def wheel_distance_alignment_exp(
+    env: ManagerBasedRLEnv,
+    min_distance: float,
+    max_distance: float,
+    desired_distance: float,
+    std: float,
+    command_name: str,
+    asset_cfg: SceneEntityCfg,
+    lateral_command_scale: float = 0.8,
+) -> torch.Tensor:
+    """Reward a valid wheel track width and alignment around its L5A nominal value."""
+    asset: Articulation = env.scene[asset_cfg.name]
+    wheel_pos_b = _body_pos_b(asset, asset_cfg.body_ids)
+    distance = torch.abs(wheel_pos_b[:, 0, 1] - wheel_pos_b[:, 1, 1])
+    outside_error = torch.clamp(min_distance - distance, min=0.0)
+    outside_error += torch.clamp(distance - max_distance, min=0.0)
+    range_reward = torch.exp(-torch.square(outside_error) / std**2)
+    nominal_reward = torch.exp(-torch.square(distance - desired_distance) / std**2)
+
+    lateral_command = torch.abs(env.command_manager.get_command(command_name)[:, 1])
+    nominal_weight = 1.0 - torch.clamp(lateral_command / lateral_command_scale, 0.0, 1.0)
+    return 0.5 * (range_reward + nominal_weight * nominal_reward)
+
+
+def stand_still_l1(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    lin_threshold: float = 0.05,
+    ang_threshold: float = 0.05,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    """Penalize base motion only when the sampled command requests standing."""
+    asset: Articulation = env.scene[asset_cfg.name]
+    command = env.command_manager.get_command(command_name)
+    lin_standing = torch.norm(command[:, :2], dim=1) < lin_threshold
+    yaw_standing = torch.abs(command[:, 2]) < ang_threshold
+    lin_penalty = torch.sum(torch.abs(asset.data.root_lin_vel_b[:, :2]), dim=1) * lin_standing
+    yaw_penalty = torch.abs(asset.data.root_ang_vel_b[:, 2]) * yaw_standing
+    return lin_penalty + yaw_penalty
+
+
+def base_projection_at_wheel_midpoint_exp(
+    env: ManagerBasedRLEnv,
+    std: float,
+    wheel_cfg: SceneEntityCfg,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    """Reward the base projection remaining above the two-wheel support midpoint."""
+    asset: Articulation = env.scene[asset_cfg.name]
+    wheel_pos_w = asset.data.body_pos_w[:, wheel_cfg.body_ids, :2]
+    midpoint_xy = torch.mean(wheel_pos_w, dim=1)
+    error = torch.sum(torch.square(asset.data.root_pos_w[:, :2] - midpoint_xy), dim=1)
+    return torch.exp(-error / std**2)
+
+
+def joint_power_l1(
+    env: ManagerBasedRLEnv,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    """Penalize absolute mechanical power of selected joints."""
+    asset: Articulation = env.scene[asset_cfg.name]
+    torque = asset.data.applied_torque[:, asset_cfg.joint_ids]
+    velocity = asset.data.joint_vel[:, asset_cfg.joint_ids]
+    return torch.sum(torch.abs(torque * velocity), dim=1)
+
+
+def joint_deviation_from_default_l2(
+    env: ManagerBasedRLEnv,
+    asset_cfg: SceneEntityCfg,
+) -> torch.Tensor:
+    """Penalize selected joints deviating from their configured default pose."""
+    asset: Articulation = env.scene[asset_cfg.name]
+    error = asset.data.joint_pos[:, asset_cfg.joint_ids] - asset.data.default_joint_pos[:, asset_cfg.joint_ids]
+    return torch.sum(torch.square(error), dim=1)
+
+
 def action_smooth_l2(env: ManagerBasedRLEnv) -> torch.Tensor:
     """Penalize second-order action rate (action smoothness).
 
@@ -124,12 +198,10 @@ def action_smooth_l2(env: ManagerBasedRLEnv) -> torch.Tensor:
     """
     # -- allocate persistent buffer on first call -------------------------------
     if not hasattr(env, "_prev_prev_action"):
-        env._prev_prev_action = torch.zeros(
-            env.num_envs, env.action_manager.action.shape[-1], device=env.device
-        )
+        env._prev_prev_action = torch.zeros(env.num_envs, env.action_manager.action.shape[-1], device=env.device)
 
     # -- early-episode masking (prev_prev is invalid for steps 0, 1) ------------
-    is_early = env.episode_length_buf < 2
+    is_early = env.episode_length_buf < 3
     prev_prev = env._prev_prev_action.clone()
     prev_prev[is_early] = 0.0
 

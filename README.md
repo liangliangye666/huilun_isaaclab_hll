@@ -12,6 +12,13 @@ It allows you to develop in an isolated environment, outside of the core Isaac L
 
 **Keywords:** extension, template, isaaclab
 
+## L5A WF locomotion
+
+The project now includes a TRON2-inspired, L5A-adapted blind-flat
+wheel-legged task with a separately supervised 10-frame base-velocity
+estimator. See [docs/l5a_wf_training.md](docs/l5a_wf_training.md) for the
+observation contract, training commands, randomization, and deployment order.
+
 ## Installation
 
 - Install Isaac Lab by following the [installation guide](https://isaac-sim.github.io/IsaacLab/main/source/setup/installation/index.html).

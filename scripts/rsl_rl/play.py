@@ -53,11 +53,18 @@ simulation_app = app_launcher.app
 
 """Rest everything follows."""
 
+import importlib.metadata as metadata
 import os
 import time
 
 import gymnasium as gym
+import huilun_isaaclab.tasks  # noqa: F401
 import torch
+from huilun_isaaclab.learning.rsl_rl import (
+    VelocityEstimatorOnPolicyRunner,
+    export_velocity_estimator_policy,
+)
+from packaging import version
 from rsl_rl.runners import DistillationRunner, OnPolicyRunner
 
 from isaaclab.envs import (
@@ -77,7 +84,10 @@ import isaaclab_tasks  # noqa: F401
 from isaaclab_tasks.utils import get_checkpoint_path
 from isaaclab_tasks.utils.hydra import hydra_task_config
 
-import huilun_isaaclab.tasks  # noqa: F401
+RSL_RL_VERSION = "3.1.2"
+installed_version = metadata.version("rsl-rl-lib")
+if version.parse(installed_version) < version.parse(RSL_RL_VERSION):
+    raise RuntimeError(f"rsl-rl-lib>={RSL_RL_VERSION} is required, but {installed_version} is installed.")
 
 
 @hydra_task_config(args_cli.task, args_cli.agent)
@@ -141,11 +151,13 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # load previously trained model
     if agent_cfg.class_name == "OnPolicyRunner":
         runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
+    elif agent_cfg.class_name == "VelocityEstimatorOnPolicyRunner":
+        runner = VelocityEstimatorOnPolicyRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
     elif agent_cfg.class_name == "DistillationRunner":
         runner = DistillationRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
     else:
         raise ValueError(f"Unsupported runner class: {agent_cfg.class_name}")
-    runner.load(resume_path)
+    runner.load(resume_path, map_location=agent_cfg.device)
 
     # obtain the trained policy for inference
     policy = runner.get_inference_policy(device=env.unwrapped.device)
@@ -169,8 +181,11 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
 
     # export policy to onnx/jit
     export_model_dir = os.path.join(os.path.dirname(resume_path), "exported")
-    export_policy_as_jit(policy_nn, normalizer=normalizer, path=export_model_dir, filename="policy.pt")
-    export_policy_as_onnx(policy_nn, normalizer=normalizer, path=export_model_dir, filename="policy.onnx")
+    if getattr(policy_nn, "is_velocity_estimator_policy", False):
+        export_velocity_estimator_policy(policy_nn, path=export_model_dir)
+    else:
+        export_policy_as_jit(policy_nn, normalizer=normalizer, path=export_model_dir, filename="policy.pt")
+        export_policy_as_onnx(policy_nn, normalizer=normalizer, path=export_model_dir, filename="policy.onnx")
 
     dt = env.unwrapped.step_dt
 
