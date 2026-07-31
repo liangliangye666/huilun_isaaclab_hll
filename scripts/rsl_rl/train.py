@@ -155,6 +155,15 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     if agent_cfg.run_name:
         log_dir += f"_{agent_cfg.run_name}"
     log_dir = os.path.join(log_root_path, log_dir)
+    '''
+    日志存储位置
+        变量	                    来源	                本任务的值
+        agent_cfg.experiment_name	agent 配置类中定义	    "l5a_wf_flat"
+        datetime.now()	            系统时间	            2026-07-30_15-30-00
+        agent_cfg.run_name	        --run_name 参数	        未指定则为空
+    最终路径：
+        <mnt/isaacdata/myproject/huilun_isaaclab>/logs/rsl_rl/l5a_wf_flat/2026-07-30_15-30-00/
+    '''
 
     # set the IO descriptors export flag if requested
     if isinstance(env_cfg, ManagerBasedRLEnvCfg):

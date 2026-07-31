@@ -3,7 +3,12 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Installation script for the 'huilun_isaaclab' python package."""
+"""``huilun_isaaclab`` 扩展的 Python 安装入口。
+
+IsaacLab 以 editable extension 的方式安装本目录。新增 ``assets``、``learning``
+或任务子包时无需手工登记，但必须保留各目录的 ``__init__.py``，这样
+``find_packages()`` 才会把它们加入安装结果。
+"""
 
 import os
 import sys
@@ -15,19 +20,18 @@ if sys.version_info >= (3, 11):
 else:
     import toml as tomllib
 
-# Obtain the extension data from the extension.toml file
+# 包元数据统一来自 extension.toml，避免 setup.py 与扩展管理器各维护一份版本号。
 EXTENSION_PATH = os.path.dirname(os.path.realpath(__file__))
-# Read the extension.toml file
 with open(os.path.join(EXTENSION_PATH, "config", "extension.toml"), "rb") as f:
     EXTENSION_TOML_DATA = tomllib.load(f)
 
-# Minimum dependencies required prior to installation
+# 这里只列扩展自身的最小依赖；IsaacLab、Isaac Sim 和 RSL-RL 由训练环境提供。
 INSTALL_REQUIRES = [
     # NOTE: Add dependencies
     "psutil",
 ]
 
-# Installation operation
+# ``find_packages`` 对本项目很重要：它会包含嵌套的 l5a/mdp 和 learning/rsl_rl。
 setup(
     name="huilun_isaaclab",
     packages=find_packages(),
