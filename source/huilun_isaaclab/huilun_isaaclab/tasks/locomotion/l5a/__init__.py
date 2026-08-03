@@ -29,17 +29,17 @@ from . import agents
 
 # 旧 IsaacGym balance 任务的 Manager-Based 训练基线：
 # [N, 320] 展平历史同时交给标准 PPO 的 Actor/Critic。
-gym.register(
-    id="Huilun-L5A-Balance-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
-    # IsaacLab 使用 GPU 批量张量/Manager 生命周期，不走标准单环境 Gym checker。
-    # 这不会关闭 IsaacLab 自己对配置、shape 或 SceneEntityCfg 的解析检查。
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": f"{__name__}.balance_env_cfg:L5ABalanceEnvCfg",
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:PPORunnerCfg",
-    },
-)
+# gym.register(
+#     id="Huilun-L5A-Balance-v0",
+#     entry_point="isaaclab.envs:ManagerBasedRLEnv",
+#     # IsaacLab 使用 GPU 批量张量/Manager 生命周期，不走标准单环境 Gym checker。
+#     # 这不会关闭 IsaacLab 自己对配置、shape 或 SceneEntityCfg 的解析检查。
+#     disable_env_checker=True,
+#     kwargs={
+#         "env_cfg_entry_point": f"{__name__}.balance_env_cfg:L5ABalanceEnvCfg",
+#         "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:PPORunnerCfg",
+#     },
+# )
 
 # 完整 WF 平地训练：非对称 Actor-Critic + 10 帧历史线速度 Encoder。
 gym.register(
@@ -64,12 +64,12 @@ gym.register(
 )
 
 # Balance 的轻量播放入口；它只关闭部分随机化，详见 L5ABalanceEnvCfg_PLAY。
-gym.register(
-    id="Huilun-L5A-Balance-Play-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": f"{__name__}.balance_env_cfg:L5ABalanceEnvCfg_PLAY",
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:PPORunnerCfg",
-    },
-)
+# gym.register(
+#     id="Huilun-L5A-Balance-Play-v0",
+#     entry_point="isaaclab.envs:ManagerBasedRLEnv",
+#     disable_env_checker=True,
+#     kwargs={
+#         "env_cfg_entry_point": f"{__name__}.balance_env_cfg:L5ABalanceEnvCfg_PLAY",
+#         "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:PPORunnerCfg",
+#     },
+# )

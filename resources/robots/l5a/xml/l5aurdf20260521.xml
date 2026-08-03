@@ -31,9 +31,9 @@
     <light pos="5 0 30" />
     <geom name="plane" type="plane" size="20 20 .01" material="grid" friction="1.0 0.02 0.01"/>
     <!-- 独木桥 -->
-    <geom name="up_slope" type="box" size="1 0.2 0.02" pos="5.96 0.2 0" euler="0 0.1745 0" rgba="0.5 0.4 0.3 1"/>
+    <!-- <geom name="up_slope" type="box" size="1 0.2 0.02" pos="5.96 0.2 0" euler="0 0.1745 0" rgba="0.5 0.4 0.3 1"/>
     <geom name="flat" type="box" size="1 0.2 0.02" pos="3.98 0.2 0.173" euler="0 0 0" rgba="0.5 0.4 0.3 1"/>
-    <geom name="down_slope" type="box" size="1 0.2 0.02" pos="2 0.2 0" euler="0 -0.1745 0" rgba="0.5 0.4 0.3 1"/>
+    <geom name="down_slope" type="box" size="1 0.2 0.02" pos="2 0.2 0" euler="0 -0.1745 0" rgba="0.5 0.4 0.3 1"/> -->
     <!-- 楼梯 -->
     <!-- <geom name="step_1" type="box" size="0.200 1.500 0.040" pos="1.200 0 0.040" rgba="0.5 0.4 0.3 1" friction="1.0 0.02 0.01"/>
     <geom name="step_2" type="box" size="0.200 1.500 0.080" pos="1.600 0 0.080" rgba="0.5 0.4 0.3 1" friction="1.0 0.02 0.01"/>
@@ -157,9 +157,9 @@
 
   <keyframe>
     <!--两轮平衡和步态-->
-    <key time="0" qpos="0 0 0.650 1 0 0 0
+    <key name="home" time="0" qpos="0 0 0.650 1 0 0 0
     0.0523599 0.261799 -0.560251 0
-    0.0523599 0.261799 -0.560251 0" />
+    -0.0523599 0.261799 -0.560251 0" />
   </keyframe>
 
 </mujoco>

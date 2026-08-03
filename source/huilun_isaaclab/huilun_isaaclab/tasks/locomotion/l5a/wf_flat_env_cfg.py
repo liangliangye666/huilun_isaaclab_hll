@@ -17,7 +17,9 @@ TRON2 参数的逐项复制：所有张量维度和随机化范围都对应 L5A 
 
 from __future__ import annotations
 
+import hashlib
 import math
+import re
 from typing import Any
 
 import isaaclab.sim as sim_utils
@@ -49,6 +51,7 @@ from huilun_isaaclab.assets.robots.l5a import (
     LEG_BODY_NAMES,
     LEG_JOINT_NAMES,
     POLICY_TO_HARDWARE_ACTION_INDICES,
+    PROJECT_ROOT,
     WHEEL_BODY_NAMES,
     WHEEL_JOINT_NAMES,
 )
@@ -138,7 +141,7 @@ class ActionsCfg:
     时不能按 USD/PhysX 返回的关节顺序重新排列。
 
     腿动作被解释为“每环境随机化后的默认关节角 + 0.25 * action”，轮动作被
-    解释为“默认轮速 + 0.5 * action”。前者是位置目标，后者是速度目标，二者
+    解释为“默认轮速 + 1.0 * action”。前者是位置目标，后者是速度目标，二者
     虽在同一策略向量中，进入执行器后的物理含义不同。
     """
 
@@ -848,13 +851,16 @@ class L5AWFFlatEnvCfg_PLAY(L5AWFFlatEnvCfg):
         self.events.reset_leg_joints.params["position_range"] = (0.0, 0.0)
         self.actions.leg_pos.default_offset_range = (0.0, 0.0)
 
-        # 追加：固定命令（直走 0.5 m/s，不旋转）
-        # self.commands.base_velocity.ranges = mdp.UniformVelocityCommandCfg.Ranges(
-        #     lin_vel_x=(0.5, 0.5),     # 固定 0.5 m/s 前向
-        #     lin_vel_y=(0.0, 0.0),     # 无侧向
-        #     ang_vel_z=(0.0, 0.0),     # 不旋转
-        #     heading=(0.0, 0.0),       # 固定航向
-        # )
+        # 追加：固定命令（直走 0.2 m/s，不旋转）
+        self.commands.base_velocity.ranges = mdp.UniformVelocityCommandCfg.Ranges(
+            lin_vel_x=(0.2, 0.2),     # 固定 0.2 m/s 前向
+            lin_vel_y=(0.0, 0.0),     # 无侧向
+            ang_vel_z=(0.0, 0.0),     # 不旋转
+            heading=(0.0, 0.0),       # 固定航向
+        )
+        self.commands.base_velocity.heading_command = False
+        self.commands.base_velocity.rel_heading_envs = 0.0
+        self.commands.base_velocity.rel_standing_envs = 0.0
 
 
 # ==================== 以下是 防止加载旧 checkpoint 时，如果 checkpoint 里的 deployment_metadata 和当前配置不同，代码会报警 ===============
@@ -982,4 +988,67 @@ def build_l5a_wf_deployment_metadata() -> dict[str, Any]:
     return metadata
 
 
+def _resolve_joint_parameter(parameter: float | dict[str, float], joint_name: str) -> float:
+    """Resolve an Isaac Lab scalar-or-regex joint parameter for one named joint."""
+    if isinstance(parameter, int | float):
+        return float(parameter)
+    matches = [float(value) for pattern, value in parameter.items() if re.fullmatch(pattern, joint_name)]
+    if len(matches) != 1:
+        raise ValueError(f"Expected exactly one parameter match for joint {joint_name!r}, got {len(matches)}.")
+    return matches[0]
+
+
+def _sha256_path(path) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def build_l5a_wf_export_metadata() -> dict[str, Any]:
+    """Enrich the checkpoint-compatible contract with runtime deployment parameters.
+
+    This function is intentionally separate from ``build_l5a_wf_deployment_metadata``. The latter
+    is serialized into checkpoints and must remain byte-for-byte compatible with existing runs.
+    """
+    metadata = build_l5a_wf_deployment_metadata()
+    env_cfg = L5AWFFlatEnvCfg()
+    actuator = env_cfg.scene.robot.actuators["all_joints"]
+    joint_order = list(ACTUATED_JOINT_NAMES)
+    command_ranges = env_cfg.commands.base_velocity.ranges
+    mjcf_path = PROJECT_ROOT / "resources" / "robots" / "l5a" / "xml" / "l5aurdf20260521.xml"
+
+    metadata.update(
+        {
+            "robot_model": {
+                "name": "Huilun-L5A-WF",
+                "mjcf_path": str(mjcf_path.relative_to(PROJECT_ROOT)),
+                "mjcf_sha256": _sha256_path(mjcf_path),
+                "keyframe": "home",
+            },
+            "default_joint_positions": {
+                "order": joint_order,
+                "values": [float(env_cfg.scene.robot.init_state.joint_pos[name]) for name in joint_order],
+            },
+            "joint_control": {
+                "order": joint_order,
+                "modes": ["position"] * len(LEG_JOINT_NAMES) + ["velocity"] * len(WHEEL_JOINT_NAMES),
+                "stiffness": [_resolve_joint_parameter(actuator.stiffness, name) for name in joint_order],
+                "damping": [_resolve_joint_parameter(actuator.damping, name) for name in joint_order],
+                "effort_limits": [
+                    _resolve_joint_parameter(actuator.effort_limit_sim, name) for name in joint_order
+                ],
+                "velocity_limits": [
+                    _resolve_joint_parameter(actuator.velocity_limit_sim, name) for name in joint_order
+                ],
+            },
+            "command_limits": {
+                "linear_velocity_x": _float_range(command_ranges.lin_vel_x),
+                "linear_velocity_y": _float_range(command_ranges.lin_vel_y),
+                "angular_velocity_z": _float_range(command_ranges.ang_vel_z),
+            },
+        }
+    )
+    return metadata
 

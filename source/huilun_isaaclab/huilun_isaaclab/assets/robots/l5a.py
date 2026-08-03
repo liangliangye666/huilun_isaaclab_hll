@@ -112,7 +112,7 @@ L5A_CFG = ArticulationCfg(
             "left_hip_pitch_joint": 0.261799,
             "left_knee_joint": -0.560251,
             "left_wheel_joint": 0.0,
-            "right_hip_roll_joint": 0.0523599,
+            "right_hip_roll_joint": -0.0523599,
             "right_hip_pitch_joint": 0.261799,
             "right_knee_joint": -0.560251,
             "right_wheel_joint": 0.0,

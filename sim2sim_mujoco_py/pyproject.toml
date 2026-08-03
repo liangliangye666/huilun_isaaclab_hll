@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "l5a-sim2sim-mujoco"
+version = "0.1.0"
+description = "Single-process MuJoCo sim2sim runner for Huilun L5A WF-Flat"
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+  "mujoco==3.9.0",
+  "numpy>=1.26,<3",
+  "onnxruntime==1.26.0",
+  "PyYAML>=6,<7",
+]
+
+[project.optional-dependencies]
+test = [
+  "onnx>=1.21,<2",
+  "pytest>=9,<10",
+]
+
+[project.scripts]
+l5a-sim2sim = "l5a_sim2sim.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+l5a_sim2sim = ["data/*.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["checks"]
+addopts = "-ra"
+markers = [
+  "integration: exercises exported ONNX models and a running MuJoCo simulation",
+]

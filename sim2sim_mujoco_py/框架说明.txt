@@ -1,0 +1,99 @@
+文件结构总览
+    sim2sim_mujoco_py/
+    ├── pyproject.toml          # Python 包配置文件（依赖声明）
+    ├── README.md               # 使用说明
+    ├── config/                 # （当前为空，预留全局配置）
+    ├── checks/                 # 单元测试（pytest）
+    │   ├── conftest.py
+    │   ├── test_control.py
+    │   ├── test_end_to_end.py
+    │   └── ...
+    └── src/l5a_sim2sim/        # 核心源码
+        ├── __init__.py          # 包标记
+        ├── __main__.py          # 入口（python -m l5a_sim2sim）
+        ├── cli.py               # 命令行解析 + 主流程编排
+        ├── config.py            # 运行默认参数加载
+        ├── control.py           # PD控制器 + 动作延迟
+        ├── history.py           # 观测历史管理
+        ├── keyboard.py          # 键盘交互控制
+        ├── manifest.py          # 模型契约验证（最重要）
+        ├── observation.py       # 观测空间构建
+        ├── policy.py            # ONNX 模型加载与推理
+        ├── simulator.py         # MuJoCo 仿真器 + 主循环
+        └── data/
+            └── l5a_wf_flat.yaml # 运行时默认参数
+
+数据流全解析
+    用户键盘/命令行
+        │
+        ▼
+    ┌──────────────┐
+    │ KeyboardCommand│── 产生 [vx, 0, wz] 速度命令 ──┐
+    └──────────────┘                                    │
+                                                        ▼
+    ┌──────────────────┐                    ┌─────────────────────┐
+    │ ObservationHistory│── 历史观测 [10,28] ──▶│ velocity_estimator │
+    │   (10帧滑动窗口)  │                    │    ONNX 模型        │
+    └──────────────────┘                    └─────────┬───────────┘
+            ▲                                        │
+            │                          估计基座线速度 [1,3]
+            │                                        │
+            │                          ┌─────────────▼───────────┐
+            │                          │    policy ONNX 模型     │
+            │                          │  输入: [v_est, obs, cmd]│
+    ┌───────┴─────────┐               └─────────────┬───────────┘
+    │ ObservationBuilder│                           │
+    │ 从仿真状态构建观测 │◀────  proprioception [28] ──┘  动作 [8]
+    │ [28维向量]        │                                     │
+    └──────────────────┘                                     ▼
+            ▲                                    ┌──────────────────┐
+            │                                    │ ActionDelayBuffer │
+            │                                    │   (0~6步延迟)     │
+    ┌───────┴─────────┐                          └────────┬─────────┘
+    │  MuJoCo 仿真器  │                                   │
+    │  MujocoAdapter  │                          ┌────────▼─────────┐
+    │                 │◀── 力矩 ──────────────────│ MixedPDController│
+    │ 每步:           │                          │ 腿:位置PD         │
+    │ 1.施加力矩       │                          │ 轮:速度PD         │
+    │ 2.mj_step()     │                          └──────────────────┘
+    │ 3.读取传感器     │
+    └─────────────────┘
+
+    关键时间关系（非常重要！）：
+        物理仿真步长：0.005 秒（200 Hz）
+        策略控制步长：0.01 秒（100 Hz）
+        这意味着每 2 个物理步才执行 1 次策略推理（decimation=2）            
+
+
+完整数据流总结
+    1. [键盘] 用户按W → KeyboardCommand 增加 vx
+                        ↓
+    2. [命令] 生成 command = [vx, 0, wz]  (3维)
+                        ↓
+    3. [策略推理] SplitOnnxPolicy.infer()
+    ├─ 输入: history[1,10,28] + obs[1,28] + command[1,3]
+    ├─ 步骤1: velocity_estimator(history) → estimated_velocity[1,3]
+    ├─ 步骤2: policy(v_est, obs, command) → action[1,8]
+    └─ 输出: estimated_velocity[3], action[8]  (经过clip截断)
+                        ↓
+    4. [动作延迟] ActionDelayBuffer.apply(action) → delayed_action[8]
+                        ↓
+    5. [PD控制] MixedPDController.compute_policy_torque()
+    ├─ 腿关节(0~5): 位置控制 → torque = Kp*(q_target-q) + Kd*(dq_target-dq)
+    ├─ 轮关节(6~7): 速度控制 → torque = Kp*(0) + Kd*(dq_target-dq)
+    └─ 力矩截断到 [-effort_limit, +effort_limit]
+                        ↓
+    6. [硬件映射] to_hardware_order(torque) → 从策略顺序转硬件顺序
+                        ↓
+    7. [物理仿真] MujocoAdapter
+    ├─ apply_hardware_torque(torque) → 写入 data.ctrl
+    ├─ mj_step() → 推进 0.005 秒物理
+    └─ 重复步骤4-7一次（decimation=2）
+                        ↓
+    8. [观测构建] ObservationBuilder.build()
+    ├─ 读取传感器: 角速度、四元数
+    ├─ 读取关节: 位置、速度
+    ├─ 拼接 + 缩放 → observation[28]
+    └─ 存入 ObservationHistory（滑动窗口）
+                        ↓
+    9. [循环] 回到步骤2，等待下一个0.01秒策略周期

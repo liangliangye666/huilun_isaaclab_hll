@@ -4,7 +4,7 @@
 """L5A 历史速度估计训练链路的公共入口。
 
 外部任务配置只需从本包导入配置类；训练脚本使用自定义 Runner，Runner 再显式构造
-Actor-Critic 与 PPO。部署脚本通过 ``export_velocity_estimator_policy`` 输出组合策略、
+Actor-Critic 与 PPO。部署脚本通过 ``export_velocity_estimator_policy`` 输出独立 Actor、
 独立 Encoder 和 manifest。这里集中重导出公共接口，内部辅助包装不会泄漏给调用方。
 """
 

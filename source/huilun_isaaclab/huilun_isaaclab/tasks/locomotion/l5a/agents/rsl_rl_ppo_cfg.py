@@ -85,7 +85,7 @@ class L5AWFPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     class_name = "VelocityEstimatorOnPolicyRunner"
     # 每环境 24 个 100 Hz 控制步（0.24 s）组成一次 on-policy rollout。
     num_steps_per_env = 24
-    max_iterations = 15000
+    max_iterations = 100000
     save_interval = 500
     experiment_name = "l5a_wf_flat"
     clip_actions = 100.0

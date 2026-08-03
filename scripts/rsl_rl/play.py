@@ -35,6 +35,12 @@ parser.add_argument(
 )
 parser.add_argument("--real-time", action="store_true", default=False, help="Run in real-time, if possible.")
 parser.add_argument(
+    "--export-only",
+    action="store_true",
+    default=False,
+    help="Load the selected checkpoint, export deployment artifacts, and exit before playback.",
+)
+parser.add_argument(
     "--record_debug",
     action="store_true",
     default=False,
@@ -248,10 +254,28 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # export policy to onnx/jit
     export_model_dir = os.path.join(log_dir, "exported")
     if getattr(policy_nn, "is_velocity_estimator_policy", False):
-        export_velocity_estimator_policy(policy_nn, path=export_model_dir)
+        deployment_metadata = policy_nn.deployment_metadata
+        if train_task_name == "Huilun-L5A-WF-Flat-v0":
+            from huilun_isaaclab.tasks.locomotion.l5a.wf_flat_env_cfg import build_l5a_wf_export_metadata
+
+            deployment_metadata = build_l5a_wf_export_metadata()
+        export_velocity_estimator_policy(
+            policy_nn,
+            path=export_model_dir,
+            deployment_metadata=deployment_metadata,
+            source_checkpoint=resume_path,
+            training_task=train_task_name,
+            export_task=task_name,
+            action_clip=agent_cfg.clip_actions,
+        )
     else:
         export_policy_as_jit(policy_nn, normalizer=normalizer, path=export_model_dir, filename="policy.pt")
         export_policy_as_onnx(policy_nn, normalizer=normalizer, path=export_model_dir, filename="policy.onnx")
+
+    if args_cli.export_only:
+        print(f"[INFO] Export completed: {export_model_dir}")
+        env.close()
+        return
 
     debug_recorder = None
     if args_cli.record_debug:
