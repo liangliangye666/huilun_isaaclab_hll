@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "huilun-l5a-sim2sim"
+version = "0.1.0"
+description = "Single-file MuJoCo sim2sim runner for the Huilun L5A WF-Flat policy"
+requires-python = ">=3.10"
+dependencies = [
+  "mujoco==3.9.0",
+  "mujoco-python-viewer>=0.1.4",
+  "numpy>=1.26,<3",
+  "scipy>=1.13,<2",
+  "torch>=2.7,<3",
+  "tqdm>=4.66,<5",
+]
+
+[tool.setuptools]
+py-modules = ["sim2sim_l5a"]
