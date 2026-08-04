@@ -802,6 +802,10 @@ class L5AWFFlatEnvCfg(ManagerBasedRLEnvCfg):
         # ④ 接触传感器更新频率 = 物理步长
         self.scene.contact_forces.update_period = self.sim.dt
 
+    def build_deployment_export_metadata(self) -> dict[str, Any]:
+        """Return this task family's complete MuJoCo deployment metadata."""
+        return build_l5a_wf_export_metadata()
+
 
 @configclass
 class L5AWFFlatEnvCfg_PLAY(L5AWFFlatEnvCfg):
@@ -1025,8 +1029,13 @@ def build_l5a_wf_export_metadata() -> dict[str, Any]:
                 "name": "Huilun-L5A-WF",
                 "mjcf_path": str(mjcf_path.relative_to(PROJECT_ROOT)),
                 "mjcf_sha256": _sha256_path(mjcf_path),
+                "base_body": BASE_BODY_NAME,
+                "base_joint": "base_joint",
+                "orientation_sensor": "orientation",
+                "angular_velocity_sensor": "angular-velocity",
                 "keyframe": "home",
             },
+            "hardware_actuator_order": list(HARDWARE_DOF_NAMES),
             "default_joint_positions": {
                 "order": joint_order,
                 "values": [float(env_cfg.scene.robot.init_state.joint_pos[name]) for name in joint_order],
@@ -1051,4 +1060,3 @@ def build_l5a_wf_export_metadata() -> dict[str, Any]:
         }
     )
     return metadata
-

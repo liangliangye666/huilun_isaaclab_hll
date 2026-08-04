@@ -255,10 +255,9 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     export_model_dir = os.path.join(log_dir, "exported")
     if getattr(policy_nn, "is_velocity_estimator_policy", False):
         deployment_metadata = policy_nn.deployment_metadata
-        if train_task_name == "Huilun-L5A-WF-Flat-v0":
-            from huilun_isaaclab.tasks.locomotion.l5a.wf_flat_env_cfg import build_l5a_wf_export_metadata
-
-            deployment_metadata = build_l5a_wf_export_metadata()
+        metadata_builder = getattr(env_cfg, "build_deployment_export_metadata", None)
+        if callable(metadata_builder):
+            deployment_metadata = metadata_builder()
         export_velocity_estimator_policy(
             policy_nn,
             path=export_model_dir,

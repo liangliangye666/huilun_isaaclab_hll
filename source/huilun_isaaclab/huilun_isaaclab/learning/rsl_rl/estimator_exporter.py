@@ -1,7 +1,7 @@
 # Copyright (c) 2022-2026, The Isaac Lab Project Developers.
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Export the L5A velocity estimator and actor as two independent models."""
+"""Export a velocity estimator and actor as two independent deployment models."""
 
 from __future__ import annotations
 
@@ -76,7 +76,7 @@ def export_velocity_estimator_policy(
     export_task: str | None = None,
     action_clip: float | None = None,
 ) -> None:
-    """Atomically export a split Encoder/Actor bundle and its format-v2 manifest."""
+    """Atomically export a split Encoder/Actor bundle and its deployment manifest."""
     if not export_jit and not export_onnx:
         raise ValueError("At least one of export_jit or export_onnx must be enabled.")
 
@@ -85,6 +85,8 @@ def export_velocity_estimator_policy(
     estimator = _VelocityEstimatorOnly(policy).cpu().eval()
 
     deployment = copy.deepcopy(deployment_metadata or policy.deployment_metadata)
+    # schema_version 只用于 checkpoint 内部元数据一致性；部署 Manifest 直接描述当前契约。
+    deployment.pop("schema_version", None)
     if action_clip is not None:
         deployment["policy_output_clip"] = float(action_clip)
 
@@ -94,8 +96,6 @@ def export_velocity_estimator_policy(
     estimator_shape: list[str | int] = ["batch", policy.estimator_output_dim]
     action_shape: list[str | int] = ["batch", policy.num_actions]
     manifest: dict[str, Any] = {
-        "format_version": 2,
-        "policy_type": "split_velocity_estimator_actor",
         "history_order": "oldest_to_newest",
         "actor_input_order": ["estimated_base_linear_velocity", "proprioception", "commands"],
         "models": {
@@ -126,7 +126,7 @@ def export_velocity_estimator_policy(
         }
 
     artifact_names: list[str] = []
-    with tempfile.TemporaryDirectory(dir=path, prefix=".l5a-export-") as staging_dir:
+    with tempfile.TemporaryDirectory(dir=path, prefix=".sim2sim-export-") as staging_dir:
         if export_jit:
             torch.jit.script(actor).save(os.path.join(staging_dir, "policy.pt"))
             torch.jit.script(estimator).save(os.path.join(staging_dir, "velocity_estimator.pt"))

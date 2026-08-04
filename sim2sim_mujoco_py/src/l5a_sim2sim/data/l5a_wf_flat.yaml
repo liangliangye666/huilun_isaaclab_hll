@@ -1,7 +1,0 @@
-command_step:
-  linear_velocity_x: 0.1
-  angular_velocity_z: 0.1
-duration_s: 20.0
-realtime_factor: 1.0
-fall_height_m: 0.35
-
