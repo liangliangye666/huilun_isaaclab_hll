@@ -164,11 +164,12 @@ class ObservationBuilder:
         self.proprioception_dim = int(deployment["proprioception_dim"])
 
         defaults = deployment["default_joint_positions"]
-        default_by_name = dict(zip(defaults["order"], defaults["values"], strict=True))
-        try:
-            self.default_q = np.asarray([default_by_name[name] for name in self.policy_order], dtype=np.float32)
-        except KeyError as error:
-            raise DeploymentError(f"default_joint_positions 缺少关节 {error.args[0]!r}。") from error
+        # load_deployment 已验证 default_joint_positions.order 与策略顺序完全一致。
+        self.default_q = np.asarray(defaults["values"], dtype=np.float32)
+        if self.default_q.shape != (self.action_dim,):
+            raise DeploymentError(
+                f"default_joint_positions.values shape 应为 {(self.action_dim,)}，实际为 {self.default_q.shape}。"
+            )
 
         self.layout = list(deployment["proprioception_layout"])
         unsupported = [item.get("name") for item in self.layout if item.get("name") not in self.SUPPORTED_TERMS]

@@ -1,21 +1,14 @@
-"""通用位置/速度 PD 控制、动作语义转换和物理步动作延迟。
+"""通用位置/速度 PD 控制、动作语义解析和物理步动作延迟。
 
-Actor 输出始终采用 Manifest 的 ``policy_action_order``。控制器先把每一维 action
-解释为位置目标或速度目标，在策略顺序下计算力矩，最后再重排成 MuJoCo 执行器
-使用的 ``hardware_dof_order``。
+Actor 输出的 ``policy_action_order`` 必须与 ``hardware_dof_order`` 完全相同。
+控制器按这一套统一顺序把 action 解释为位置或速度目标，直接计算并输出
+MuJoCo/硬件可用的力矩，不再执行任何索引重排。
 
-.. rubric:: 核心概念：policy_order 与 hardware_order 的区别
+.. rubric:: 核心概念：统一关节顺序
 
-这是新手最容易困惑的地方。简单说：
-
-- **policy_order**：训练时 Actor 输出动作的关节排列顺序。这是神经网络的"语言"。
-- **hardware_order**：MuJoCo XML 中执行器的排列顺序。这是仿真的"语言"。
-
-这两个顺序可能不同！比如训练时 Actor 输出 [左腿1, 右腿1, 左腿2, 右腿2]，
-但 MuJoCo XML 中执行器是 [左腿1, 左腿2, 右腿1, 右腿2]（按腿分组）。
-
-因此所有内部计算（action→目标→力矩）都在 policy_order 下进行，
-只在最后写入 ``data.ctrl`` 前才通过 ``to_hardware_order()`` 转换一次。
+当前 L5A 契约为 ``[左三腿, 左轮, 右三腿, 右轮]``。启动时会验证
+Manifest 中的策略、硬件与映射字段均为这一直通契约；任意一项不一致都会在
+仿真启动时报错，避免静默地把力矩写给错误关节。
 
 .. rubric:: PD 控制通俗解释
 
@@ -95,60 +88,42 @@ class GenericPDController:
     """
 
     def __init__(self, deployment: dict[str, Any]) -> None:
-        """按关节名对齐默认位置、PD 参数、动作缩放和控制模式。
+        """按统一关节顺序读取默认位置、PD 参数、动作缩放和控制模式。
 
         初始化流程概述：
-        1. 读取 policy_action_order 和 hardware_dof_order，验证两套顺序包含相同关节
-        2. 构建 policy_to_hardware 索引数组，用于最后一步重排
-        3. 从 Manifest 按关节名提取 default_q、kp、kd、effort_limits、控制模式
-        4. 解析 policy_action_semantics：每个关节的 action_scale 和是否使用默认偏移
-        5. 构建 position_mask/velocity_mask 布尔数组，用于后续分支计算
+        1. 读取 policy_action_order 和 hardware_dof_order，验证两套列表逐项相同
+        2. 从 Manifest 直接读取同序的 default_q、kp、kd、effort_limits、控制模式
+        3. 解析 policy_action_semantics：每个关节的 action_scale 和是否使用默认偏移
+        4. 构建 position_mask/velocity_mask 布尔数组，用于后续分支计算
         """
-        self.policy_order = list(deployment["policy_action_order"])
-        self.hardware_order = list(deployment["hardware_dof_order"])
-        self.action_dim = len(self.policy_order)
-        if len(set(self.policy_order)) != self.action_dim:
+        self.joint_order = list(deployment["policy_action_order"])
+        hardware_order = list(deployment["hardware_dof_order"])
+        self.action_dim = len(self.joint_order)
+        if len(set(self.joint_order)) != self.action_dim:
             raise DeploymentError("policy_action_order 中存在重复关节名。")
-        if set(self.policy_order) != set(self.hardware_order):
-            raise DeploymentError("hardware_dof_order 必须与 policy_action_order 包含相同关节。")
+        if hardware_order != self.joint_order:
+            raise DeploymentError("hardware_dof_order 必须与 policy_action_order 逐项相同；当前运行时不做关节重排。")
 
-        # ---- 构建重排索引 ----
-        # 例如 policy_order=[A,B,C], hardware_order=[C,A,B]
-        # 则 policy_to_hardware=[2,0,1]，用 values[[2,0,1]] 即可重排
-        policy_index = {name: index for index, name in enumerate(self.policy_order)}
-        self.policy_to_hardware = np.asarray([policy_index[name] for name in self.hardware_order], dtype=np.int64)
+        joint_index = {name: index for index, name in enumerate(self.joint_order)}
 
-        # ---- 按关节名提取参数 ----
-        # Manifest 各参数可能使用自己的 order，先按名字建表，再统一转成 policy_order
+        # ---- 直接读取同序参数 ----
+        # load_deployment 已保证这些数组与 joint_order 逐项相同，不再按名字重排。
         defaults = deployment["default_joint_positions"]
-        default_by_name = dict(zip(defaults["order"], defaults["values"], strict=True))
         control = deployment["joint_control"]
-        control_by_name = {
-            name: {
-                "mode": mode,
-                "kp": kp,
-                "kd": kd,
-                "effort": effort,
-            }
-            for name, mode, kp, kd, effort in zip(
-                control["order"],
-                control["modes"],
-                control["stiffness"],
-                control["damping"],
-                control["effort_limits"],
-                strict=True,
-            )
-        }
-        try:
-            self.default_q = np.asarray([default_by_name[name] for name in self.policy_order], dtype=np.float64)
-            self.modes = [control_by_name[name]["mode"] for name in self.policy_order]
-            self.kp = np.asarray([control_by_name[name]["kp"] for name in self.policy_order], dtype=np.float64)
-            self.kd = np.asarray([control_by_name[name]["kd"] for name in self.policy_order], dtype=np.float64)
-            self.effort_limits = np.asarray(
-                [control_by_name[name]["effort"] for name in self.policy_order], dtype=np.float64
-            )
-        except KeyError as error:
-            raise DeploymentError(f"默认位置或 joint_control 缺少关节 {error.args[0]!r}。") from error
+        self.default_q = np.asarray(defaults["values"], dtype=np.float64)
+        self.modes = list(control["modes"])
+        self.kp = np.asarray(control["stiffness"], dtype=np.float64)
+        self.kd = np.asarray(control["damping"], dtype=np.float64)
+        self.effort_limits = np.asarray(control["effort_limits"], dtype=np.float64)
+        for name, values in (
+            ("default_joint_positions.values", self.default_q),
+            ("joint_control.modes", self.modes),
+            ("joint_control.stiffness", self.kp),
+            ("joint_control.damping", self.kd),
+            ("joint_control.effort_limits", self.effort_limits),
+        ):
+            if len(values) != self.action_dim:
+                raise DeploymentError(f"{name} 长度必须为 {self.action_dim}，实际为 {len(values)}。")
 
         # ---- 验证控制模式 ----
         # 目前只支持 position（位置控制）和 velocity（速度控制）两种模式
@@ -169,21 +144,21 @@ class GenericPDController:
             scale = float(group["scale"])
             use_default = bool(group.get("uses_default_offset", True))
             for joint_name in group["joints"]:
-                if joint_name not in policy_index:
+                if joint_name not in joint_index:
                     raise DeploymentError(f"动作语义 {group_name!r} 引用了未知关节 {joint_name!r}。")
-                index = policy_index[joint_name]
+                index = joint_index[joint_name]
                 if np.isfinite(self.action_scale[index]):
                     raise DeploymentError(f"关节 {joint_name!r} 被多个动作语义分组重复定义。")
                 self.action_scale[index] = scale
                 self.uses_default_offset[index] = use_default
         missing_semantics = [
-            self.policy_order[index] for index, scale in enumerate(self.action_scale) if not np.isfinite(scale)
+            self.joint_order[index] for index, scale in enumerate(self.action_scale) if not np.isfinite(scale)
         ]
         if missing_semantics:
             raise DeploymentError(f"这些关节没有动作缩放定义：{missing_semantics}")
 
     def targets(self, action: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        """把原始 action 转换为 ``policy_order`` 下的位置和速度目标。
+        """把原始 action 转换为统一关节顺序下的位置和速度目标。
 
         位置模式通常使用 ``q_target = baseline + scale * action``；baseline 由
         ``uses_default_offset`` 决定是默认关节角还是零。速度模式使用
@@ -203,19 +178,19 @@ class GenericPDController:
         velocity_target[self.velocity_mask] = self.action_scale[self.velocity_mask] * action[self.velocity_mask]
         return position_target, velocity_target
 
-    def compute_policy_torque(
+    def compute_torque(
         self,
         action: np.ndarray,
-        joint_position_policy: np.ndarray,
-        joint_velocity_policy: np.ndarray,
+        joint_position: np.ndarray,
+        joint_velocity: np.ndarray,
     ) -> np.ndarray:
-        """按控制模式计算并裁剪 ``policy_order`` 下的关节力矩。
+        """按控制模式计算并裁剪统一关节顺序下的关节力矩。
 
         位置模式使用 ``kp*(q_target-q) + kd*(0-dq)``，速度模式使用
         ``kd*(dq_target-dq)``。计算后逐关节裁剪到 ``effort_limits``。
         """
-        q = np.asarray(joint_position_policy, dtype=np.float64)
-        dq = np.asarray(joint_velocity_policy, dtype=np.float64)
+        q = np.asarray(joint_position, dtype=np.float64)
+        dq = np.asarray(joint_velocity, dtype=np.float64)
         expected_shape = (self.action_dim,)
         if q.shape != expected_shape or dq.shape != expected_shape:
             raise ValueError(f"关节状态 shape 应为 {expected_shape}，实际 q={q.shape}, dq={dq.shape}。")
@@ -232,11 +207,3 @@ class GenericPDController:
         if not np.all(np.isfinite(torque)):
             raise FloatingPointError("PD 控制器输出包含 NaN 或 Inf。")
         return torque
-
-    def to_hardware_order(self, policy_values: np.ndarray) -> np.ndarray:
-        """把 ``policy_order`` 向量重排为可写入执行器的 ``hardware_dof_order``。"""
-        values = np.asarray(policy_values)
-        expected_shape = (self.action_dim,)
-        if values.shape != expected_shape:
-            raise ValueError(f"策略向量 shape 应为 {expected_shape}，实际为 {values.shape}。")
-        return values[self.policy_to_hardware]

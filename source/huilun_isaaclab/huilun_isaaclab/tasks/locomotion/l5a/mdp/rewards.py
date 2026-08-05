@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""L5A balance/WF 任务的奖励项。
+"""L5A WF 任务的奖励项。
 
 所有函数都返回逐环境的一维张量 ``[num_envs]``，这里只计算"未加权指标"。
 它究竟是奖励还是惩罚由环境配置中对应 ``RewardTermCfg.weight`` 的正负决定：
@@ -57,57 +57,6 @@ def base_height_l1(
     asset: RigidObject = env.scene[asset_cfg.name]
     return torch.abs(asset.data.root_pos_w[:, 2] - target_height)
 
-
-def track_lin_vel_x_exp(
-    env: ManagerBasedRLEnv,
-    std: float,
-    command_name: str,
-    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
-) -> torch.Tensor:
-    """指数奖励基座系前向速度对 x 指令的跟踪。
-
-    指标为 ``exp(-(v_cmd_x-v_base_x)^2/std^2)``：完全跟踪时为 1，误差相对
-    ``std`` 增大时快速衰减。使用基座系速度，使指令含义始终是机器人自身前向。
-    """
-    asset: RigidObject = env.scene[asset_cfg.name]
-    # ① 计算前向速度误差的平方：δ² = (v_cmd_x - v_base_x)²
-    lin_vel_error = torch.square(env.command_manager.get_command(command_name)[:, 0] - asset.data.root_lin_vel_b[:, 0])
-    # ② 指数核：exp(-δ² / σ²)，误差越大奖励越接近 0
-    return torch.exp(-lin_vel_error / std**2)
-
-
-'''
-基座和轮子之间的相对腿长
-在 balance_env_cfg.py 中使用，可删除
-'''
-def nominal_wheel_height_exp(
-    env: ManagerBasedRLEnv,
-    target_base_height: float,
-    wheel_radius: float,
-    std: float,
-    speed_attenuation_std: float,
-    command_name: str,
-    asset_cfg: SceneEntityCfg,
-) -> torch.Tensor:
-    """奖励两轮相对基座保持名义垂向位置。
-
-    名义轮心高度为 ``-(target_base_height-wheel_radius)``；分别对左右轮的 z
-    误差施加指数核后取均值。结果再按指令速度模长衰减，使高速运动时不过度要求
-    静态轮高精度，延续原 IsaacGym L5A 任务的设计。这里的坐标是基座系，因此
-    主要约束腿长/构型，不会重复惩罚机器人在世界系中的平移。
-    """
-    asset: Articulation = env.scene[asset_cfg.name]
-    # ① 获取左右轮在基座系中的位置 [N, 2, 3]
-    wheel_pos_b = _body_pos_b(asset, asset_cfg.body_ids)
-    # ② 计算名义轮心高度（基座系 z 坐标）
-    target_wheel_z_b = -(target_base_height - wheel_radius)
-    # ③ 左右轮高度误差的指数核取均值
-    height_error = torch.square(target_wheel_z_b - wheel_pos_b[..., 2])
-    base_reward = torch.mean(torch.exp(-height_error / std**2), dim=1)
-    # ④ 速度门控：速度指令越大，轮高奖励权重越弱
-    vel_cmd = env.command_manager.get_command(command_name)
-    vel_norm = torch.norm(vel_cmd[:, :3], dim=1)
-    return base_reward * torch.exp(-torch.square(vel_norm) / speed_attenuation_std**2)
 
 '''
 基座系对称性

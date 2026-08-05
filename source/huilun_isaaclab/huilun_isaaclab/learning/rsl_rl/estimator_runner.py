@@ -181,34 +181,49 @@ class VelocityEstimatorOnPolicyRunner(OnPolicyRunner):
 
             actions_cfg = getattr(cfg, "actions", None)
             if actions_cfg is not None:
-                leg_action = getattr(actions_cfg, "leg_pos", None)
-                wheel_action = getattr(actions_cfg, "wheel_vel", None)
-                if leg_action is not None:
-                    if list(leg_action.joint_names) != metadata["policy_action_semantics"]["leg_position"]["joints"]:
-                        mismatches.append("policy_action_semantics.leg_position.joints differs from runtime cfg.")
-                    _append_float_mismatch(
-                        mismatches,
-                        "policy_action_semantics.leg_position.scale",
-                        metadata["policy_action_semantics"]["leg_position"]["scale"],
-                        leg_action.scale,
+                action_terms = [
+                    term_cfg
+                    for term_cfg in actions_cfg.__dict__.values()
+                    if term_cfg is not None and hasattr(term_cfg, "joint_names")
+                ]
+                runtime_action_order = [
+                    joint_name for action_term in action_terms for joint_name in action_term.joint_names
+                ]
+                if runtime_action_order != metadata["policy_action_order"]:
+                    mismatches.append(
+                        f"policy_action_order: metadata={metadata['policy_action_order']!r} "
+                        f"runtime={runtime_action_order!r}"
                     )
-                    if (
-                        bool(leg_action.use_default_offset)
-                        != metadata["policy_action_semantics"]["leg_position"]["uses_default_offset"]
-                    ):
-                        mismatches.append("policy_action_semantics.leg_position.uses_default_offset differs.")
-                if wheel_action is not None:
-                    if (
-                        list(wheel_action.joint_names)
-                        != metadata["policy_action_semantics"]["wheel_velocity"]["joints"]
-                    ):
-                        mismatches.append("policy_action_semantics.wheel_velocity.joints differs from runtime cfg.")
-                    _append_float_mismatch(
-                        mismatches,
-                        "policy_action_semantics.wheel_velocity.scale",
-                        metadata["policy_action_semantics"]["wheel_velocity"]["scale"],
-                        wheel_action.scale,
-                    )
+
+                action_cfg_by_joint = {
+                    joint_name: action_term
+                    for action_term in action_terms
+                    for joint_name in action_term.joint_names
+                }
+                for semantic_name, semantic_cfg in metadata["policy_action_semantics"].items():
+                    missing_joints = [
+                        joint_name for joint_name in semantic_cfg["joints"] if joint_name not in action_cfg_by_joint
+                    ]
+                    if missing_joints:
+                        mismatches.append(
+                            f"policy_action_semantics.{semantic_name}.joints missing from runtime cfg: "
+                            f"{missing_joints!r}"
+                        )
+                        continue
+                    semantic_terms = {
+                        id(action_cfg_by_joint[name]): action_cfg_by_joint[name] for name in semantic_cfg["joints"]
+                    }
+                    for action_term in semantic_terms.values():
+                        _append_float_mismatch(
+                            mismatches,
+                            f"policy_action_semantics.{semantic_name}.scale",
+                            semantic_cfg["scale"],
+                            action_term.scale,
+                        )
+                        if bool(action_term.use_default_offset) != semantic_cfg["uses_default_offset"]:
+                            mismatches.append(
+                                f"policy_action_semantics.{semantic_name}.uses_default_offset differs."
+                            )
 
         if mismatches:
             message = "\n".join(f"- {item}" for item in mismatches)

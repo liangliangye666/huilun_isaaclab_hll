@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""L5A 两类环境对应的 RSL-RL Runner、网络和 PPO 配置。
+"""L5A WF 环境对应的 RSL-RL Runner、网络和 PPO 配置。
 
 Gym 注册项通过 ``rsl_rl_cfg_entry_point`` 找到这里的配置类。环境配置负责产生
 TensorDict，Runner 配置负责说明哪些 observation group 交给 Actor/Critic、每次
@@ -15,54 +15,11 @@ rollout 收集多长，以及实例化标准 PPO 还是带独立速度 Encoder �
 
 from isaaclab.utils import configclass
 
-from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, RslRlPpoAlgorithmCfg
+from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg
 
 from huilun_isaaclab.learning.rsl_rl import VelocityEstimatorActorCriticCfg, VelocityEstimatorPPOCfg
 
 from ..wf_flat_env_cfg import build_l5a_wf_deployment_metadata
-
-
-@configclass
-class PPORunnerCfg(RslRlOnPolicyRunnerCfg):
-    """基础 balance 任务使用的标准、对称观测 PPO。
-
-    环境的 ``policy`` group 已经将 10 帧 32 维特征展平成 ``[N, 320]``。
-    ``obs_groups`` 将同一向量同时交给 Actor 和 Critic，所以这里没有特权观测，
-    也没有独立速度估计损失。
-    """
-
-    # 每个环境先采 48 个 100 Hz 控制步（0.48 s）再进行一轮 PPO 更新。
-    num_steps_per_env = 48
-    max_iterations = 20000
-    save_interval = 200
-    experiment_name = "l5a_balance"
-    # 这是异常动作的最后保护边界，不代表期望策略长期输出到 +/-100。
-    clip_actions = 100.0
-    # RSL-RL 会按列表顺序连接 group；balance 的 Actor/Critic 使用完全相同的输入。
-    obs_groups = {"policy": ["policy"], "critic": ["policy"]}
-    policy = RslRlPpoActorCriticCfg(
-        init_noise_std=1.0,
-        actor_obs_normalization=False,
-        critic_obs_normalization=False,
-        actor_hidden_dims=[512, 256, 128],
-        critic_hidden_dims=[512, 256, 128],
-        activation="elu",
-    )
-    algorithm = RslRlPpoAlgorithmCfg(
-        # 以下为标准 clipped PPO + GAE；adaptive 根据 desired_kl 调节 PPO 学习率。
-        value_loss_coef=1.0,
-        use_clipped_value_loss=True,
-        clip_param=0.2,
-        entropy_coef=0.005,
-        num_learning_epochs=5,
-        num_mini_batches=4,
-        learning_rate=1.0e-3,
-        schedule="adaptive",
-        gamma=0.99,
-        lam=0.95,
-        desired_kl=0.01,
-        max_grad_norm=1.0,
-    )
 
 
 @configclass
@@ -83,7 +40,8 @@ class L5AWFPPORunnerCfg(RslRlOnPolicyRunnerCfg):
 
     # train.py 根据该名称选择项目内 Runner；它负责两套 optimizer 的 checkpoint。
     class_name = "VelocityEstimatorOnPolicyRunner"
-    # 每环境 24 个 100 Hz 控制步（0.24 s）组成一次 on-policy rollout。
+    # 每环境 24 个 50 Hz 控制步（0.48 s）组成一次 on-policy rollout。
+    # 保留 24 步可保持每轮 PPO 的样本数；若改为 12 步才是保持原 0.24 s 物理时域。
     num_steps_per_env = 24
     max_iterations = 100000
     save_interval = 500
@@ -126,6 +84,8 @@ class L5AWFPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         num_mini_batches=4,
         learning_rate=1.0e-3,
         schedule="adaptive",
+        # gamma/lam 按策略步定义。这里保留常用 PPO 基线；若要严格保持
+        # 原 100 Hz 设置的连续时间衰减，50 Hz 下对应 gamma=0.99**2、lam=0.95**2。
         gamma=0.99,
         lam=0.95,
         desired_kl=0.01,

@@ -11,7 +11,7 @@ Manager 有哪些 term，以及 term 使用什么参数。真正的运行对象�
 终止信号和下一帧观测。
 
 任务借鉴 TRON2 WF 的训练结构，但机器人模型、关节限制、PD 参数、动作缩放、
-轮半径、轮距以及 100 Hz 的 L5A 控制周期仍以本项目为准。尤其不要把本文件当作
+轮半径、轮距以及 50 Hz 的 L5A 控制周期仍以本项目为准。尤其不要把本文件当作
 TRON2 参数的逐项复制：所有张量维度和随机化范围都对应 L5A 当前资产。
 """
 
@@ -38,11 +38,9 @@ from isaaclab.utils import configclass
 from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 
 from huilun_isaaclab.assets.robots.l5a import (
-    ACTUATED_JOINT_NAMES,
     BASE_BODY_NAME,
     HARDWARE_DOF_NAMES,
     HARDWARE_TO_POLICY_STATE_INDICES,
-    L5A_CFG,
     L5A_MAX_TRACK_WIDTH,
     L5A_MIN_TRACK_WIDTH,
     L5A_NOMINAL_BASE_HEIGHT,
@@ -50,8 +48,13 @@ from huilun_isaaclab.assets.robots.l5a import (
     L5A_WF_CFG,
     LEG_BODY_NAMES,
     LEG_JOINT_NAMES,
+    LEFT_LEG_JOINT_NAMES,
+    LEFT_WHEEL_JOINT_NAMES,
     POLICY_TO_HARDWARE_ACTION_INDICES,
     PROJECT_ROOT,
+    RIGHT_LEG_JOINT_NAMES,
+    RIGHT_WHEEL_JOINT_NAMES,
+    WF_POLICY_DOF_NAMES,
     WHEEL_BODY_NAMES,
     WHEEL_JOINT_NAMES,
 )
@@ -135,28 +138,44 @@ class CommandsCfg:
 class ActionsCfg:
     """L5A 的 8 维混合控制接口。
 
-    ActionManager 按 term 的声明顺序拼接动作，所以策略动作始终是
-    ``[6 个 LEG_JOINT_NAMES 位置动作, 2 个 WHEEL_JOINT_NAMES 速度动作]``。
-    ``preserve_order=True`` 又保证每一段内部严格沿常量中的关节顺序映射，部署
-    时不能按 USD/PhysX 返回的关节顺序重新排列。
+    ActionManager 按 term 的声明顺序拼接动作。因此位置和速度动作拆成
+    ``左腿、左轮、右腿、右轮`` 四个 term，使 Actor 输出直接采用
+    ``WF_POLICY_DOF_NAMES == HARDWARE_DOF_NAMES`` 的顺序。``preserve_order=True``
+    保证每个 term 内部严格按左/右关节常量映射。
 
     腿动作被解释为“每环境随机化后的默认关节角 + 0.25 * action”，轮动作被
     解释为“默认轮速 + 1.0 * action”。前者是位置目标，后者是速度目标，二者
     虽在同一策略向量中，进入执行器后的物理含义不同。
     """
 
-    leg_pos = mdp.RandomizedDefaultJointPositionActionCfg(
+    left_leg_pos = mdp.RandomizedDefaultJointPositionActionCfg(
         asset_name="robot",
-        joint_names=LEG_JOINT_NAMES,
+        joint_names=LEFT_LEG_JOINT_NAMES,
         scale=0.25,
         use_default_offset=True,
         preserve_order=True,
         default_offset_range=(-0.05, 0.05),
     )
-    wheel_vel = mdp.JointVelocityActionCfg(
+    left_wheel_vel = mdp.JointVelocityActionCfg(
         asset_name="robot",
-        joint_names=WHEEL_JOINT_NAMES,
-        scale=1,      # TODO 原先设计是0.5,但是L5A 轮半径是 0.127 m，如果命令 lin_vel_x=1.0 m/s，理想轮速量级约为：1.0 / 0.127 ≈ 7.87 rad/s，tron设置为 1
+        joint_names=LEFT_WHEEL_JOINT_NAMES,
+        # 轮半径 0.127 m；1.0 m/s 指令对应约 7.87 rad/s，这里保留当前 WF 的 1.0 缩放。
+        scale=1.0,
+        use_default_offset=True,
+        preserve_order=True,
+    )
+    right_leg_pos = mdp.RandomizedDefaultJointPositionActionCfg(
+        asset_name="robot",
+        joint_names=RIGHT_LEG_JOINT_NAMES,
+        scale=0.25,
+        use_default_offset=True,
+        preserve_order=True,
+        default_offset_range=(-0.05, 0.05),
+    )
+    right_wheel_vel = mdp.JointVelocityActionCfg(
+        asset_name="robot",
+        joint_names=RIGHT_WHEEL_JOINT_NAMES,
+        scale=1.0,
         use_default_offset=True,
         preserve_order=True,
     )
@@ -181,9 +200,8 @@ class ObservationsCfg:
     估计；Actor 输入是 ``3 + 28 + 3 = 34`` 维，Critic 输入则是
     ``68 + 3 = 71`` 维。真值线速度和其余特权量不会泄漏给 Actor。
 
-    物理步长是 0.005 s，``decimation=2`` 后策略频率为 100 Hz。因此 10 帧表示
-    10 个连续的 100 Hz 采样，训练契约中记作约 0.10 s 的历史窗口，而不是
-    TRON2 原控制频率下的 0.20 s。
+    物理步长是 0.005 s，``decimation=4`` 后策略频率为 50 Hz。因此 10 帧表示
+    10 个连续的 50 Hz 采样，训练和部署契约中记作 0.20 s 的历史窗口。
     """
 
     @configclass
@@ -208,7 +226,7 @@ class ObservationsCfg:
         )
         joint_vel = ObsTerm(
             func=mdp.joint_vel_rel,
-            params={"asset_cfg": SceneEntityCfg("robot", joint_names=ACTUATED_JOINT_NAMES, preserve_order=True)},
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=WF_POLICY_DOF_NAMES, preserve_order=True)},
             noise=Unoise(n_min=-1.5, n_max=1.5),
             scale=0.05,
         )
@@ -247,7 +265,7 @@ class ObservationsCfg:
         )
         joint_vel = ObsTerm(
             func=mdp.joint_vel_rel,
-            params={"asset_cfg": SceneEntityCfg("robot", joint_names=ACTUATED_JOINT_NAMES, preserve_order=True)},
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=WF_POLICY_DOF_NAMES, preserve_order=True)},
             noise=Unoise(n_min=-1.5, n_max=1.5),
             scale=0.05,
         )
@@ -309,7 +327,7 @@ class ObservationsCfg:
         )
         joint_vel = ObsTerm(
             func=mdp.joint_vel,
-            params={"asset_cfg": SceneEntityCfg("robot", joint_names=ACTUATED_JOINT_NAMES, preserve_order=True)},
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=WF_POLICY_DOF_NAMES, preserve_order=True)},
             scale=0.05,
         )
 
@@ -322,7 +340,7 @@ class ObservationsCfg:
         '''
         joint_torque = ObsTerm(
             func=mdp.privileged_joint_torque,
-            params={"asset_cfg": SceneEntityCfg("robot", joint_names=ACTUATED_JOINT_NAMES, preserve_order=True)},
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=WF_POLICY_DOF_NAMES, preserve_order=True)},
             scale=0.05,
         )
         '''
@@ -330,7 +348,7 @@ class ObservationsCfg:
         '''
         joint_acc = ObsTerm(
             func=mdp.privileged_joint_acc,
-            params={"asset_cfg": SceneEntityCfg("robot", joint_names=ACTUATED_JOINT_NAMES, preserve_order=True)},
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=WF_POLICY_DOF_NAMES, preserve_order=True)},
             scale=0.0025,
         )
         '''
@@ -452,7 +470,7 @@ class EventCfg:
         func=mdp.randomize_actuator_gains,
         mode="startup",
         params={
-            "asset_cfg": SceneEntityCfg("robot", joint_names=ACTUATED_JOINT_NAMES, preserve_order=True),
+            "asset_cfg": SceneEntityCfg("robot", joint_names=WF_POLICY_DOF_NAMES, preserve_order=True),
             "stiffness_distribution_params": (0.8, 1.2),
             "damping_distribution_params": (0.8, 1.2),
             "operation": "scale",
@@ -470,7 +488,7 @@ class EventCfg:
         func=mdp.randomize_joint_effort_limits,
         mode="startup",
         params={
-            "asset_cfg": SceneEntityCfg("robot", joint_names=ACTUATED_JOINT_NAMES, preserve_order=True),
+            "asset_cfg": SceneEntityCfg("robot", joint_names=WF_POLICY_DOF_NAMES, preserve_order=True),
             "scale_range": (0.8, 1.2),
         },
     )
@@ -573,7 +591,7 @@ class EventCfg:
 class RewardsCfg:
     """按“任务目标—轮足构型—稳定性—可执行性”组织的 WF 奖励。
 
-    RewardManager 在每个 100 Hz 策略步计算所有 term，并将 ``func`` 输出乘以
+    RewardManager 在每个 50 Hz 策略步计算所有 term，并将 ``func`` 输出乘以
     ``weight`` 后累加（框架还会按控制步长积分）。正权重鼓励行为，负权重表示
     代价；因此只看原始函数名而忽略符号会误判优化方向。
     """
@@ -654,6 +672,8 @@ class RewardsCfg:
     )
 
     # 动作时序正则：抑制相邻动作突变及二阶不平滑，减轻实机抖动。
+    # 两项都是未除以 step_dt 的离散差分；降到 50 Hz 后保留当前权重作为重训起点，
+    # 应根据 action_rate/action_smoothness 奖励量级和实机抖动重新评估。
     action_rate = RewTerm(          # 动作变化率
         func=mdp.action_rate_l2,
         weight=-0.02,
@@ -680,12 +700,12 @@ class RewardsCfg:
     joint_torque = RewTerm(
         func=mdp.joint_torques_l2,  # 关节力矩
         weight=-4.0e-7,
-        params={"asset_cfg": SceneEntityCfg("robot", joint_names=ACTUATED_JOINT_NAMES, preserve_order=True)},
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=WF_POLICY_DOF_NAMES, preserve_order=True)},
     )
     joint_acc = RewTerm(
         func=mdp.joint_acc_l2,      # 关节加速度
         weight=-1.5e-7,
-        params={"asset_cfg": SceneEntityCfg("robot", joint_names=ACTUATED_JOINT_NAMES, preserve_order=True)},
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=WF_POLICY_DOF_NAMES, preserve_order=True)},
     )
     leg_pos_limits = RewTerm(       # 软限位
         func=mdp.joint_pos_limits,
@@ -695,7 +715,7 @@ class RewardsCfg:
     joint_power = RewTerm(          # 关节功率
         func=mdp.joint_power_l1,
         weight=-1.0e-5,
-        params={"asset_cfg": SceneEntityCfg("robot", joint_names=ACTUATED_JOINT_NAMES, preserve_order=True)},
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=WF_POLICY_DOF_NAMES, preserve_order=True)},
     )
     wheel_velocity = RewTerm(       # 轮速度
         func=mdp.joint_vel_l2,
@@ -774,13 +794,12 @@ class L5AWFFlatEnvCfg(ManagerBasedRLEnvCfg):
     curriculum: CurriculumCfg = CurriculumCfg()
 
     def __post_init__(self) -> None:
-        # ① 时间离散配置：physics dt=0.005, decimation=2 → 100 Hz 策略步
+        # ① 时间离散配置：physics dt=0.005, decimation=4 → 50 Hz 策略步
         #    L5A 的时间离散是实机接口与训练契约的一部分：
-        #    0.005 s 物理步长 = 200 Hz；每 2 个物理步更新一次策略 = 100 Hz。
-        #    不应单独修改 decimation。它会同时改变策略控制周期、10 帧 Encoder
-        #    的物理时间窗、动作延迟的秒数解释、奖励积分尺度和 interval 事件计时，
-        #    使当前网络/部署 manifest 与实机控制周期不再一致。
-        self.decimation = 2
+        #    0.005 s 物理步长 = 200 Hz；每 4 个物理步更新一次策略 = 50 Hz。
+        #    10 帧 Encoder 历史因此覆盖 0.20 s；Manifest 会自动导出 0.02 s 控制周期。
+        #    执行器延迟以 0.005 s 物理步计数，因此 0--6 步仍是 0--30 ms。
+        self.decimation = 4
         self.episode_length_s = 20.0
 
         # ② 设置可视化相机位置
@@ -822,16 +841,13 @@ class L5AWFFlatEnvCfg_PLAY(L5AWFFlatEnvCfg):
         super().__post_init__()
         # ② 缩小环境数量（训练 4096 → 播放 32）
         self.scene.num_envs = 32
-        # ③ 替换为无延迟的 L5A_CFG（不包含训练用的随机动作延迟）        TODO tron2中并没有这么做，还是复用原始版本，因此这里应该注释
-        # self.scene.robot = L5A_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
-
-        # ④ 关闭 policy 和 history 的观测噪声（观测布局不变，checkpoint 可直接加载）
+        # ③ 关闭 policy 和 history 的观测噪声（观测布局不变，checkpoint 可直接加载）
         self.observations.policy.enable_corruption = False
         self.observations.obs_history.enable_corruption = False
-        # ⑤ 开启指令可视化
+        # ④ 开启指令可视化
         self.commands.base_velocity.debug_vis = True
 
-        # ⑥ 关闭所有 startup 个体差异随机化
+        # ⑤ 关闭所有 startup 个体差异随机化
         self.events.imu_mounting_bias = None
         self.events.add_base_mass = None
         self.events.scale_link_mass = None
@@ -843,7 +859,7 @@ class L5AWFFlatEnvCfg_PLAY(L5AWFFlatEnvCfg):
         self.events.link_com = None
         self.events.push_robot = None
 
-        # ⑦ 收紧 reset 随机范围：每次评估从名义状态开始
+        # ⑥ 收紧 reset 随机范围：每次评估从名义状态开始
         self.events.reset_base.params["pose_range"] = {
             "x": (0.0, 0.0),
             "y": (0.0, 0.0),
@@ -853,18 +869,19 @@ class L5AWFFlatEnvCfg_PLAY(L5AWFFlatEnvCfg):
             axis: (0.0, 0.0) for axis in ("x", "y", "z", "roll", "pitch", "yaw")
         }
         self.events.reset_leg_joints.params["position_range"] = (0.0, 0.0)
-        self.actions.leg_pos.default_offset_range = (0.0, 0.0)
+        self.actions.left_leg_pos.default_offset_range = (0.0, 0.0)
+        self.actions.right_leg_pos.default_offset_range = (0.0, 0.0)
 
         # 追加：固定命令（直走 0.2 m/s，不旋转）
-        self.commands.base_velocity.ranges = mdp.UniformVelocityCommandCfg.Ranges(
-            lin_vel_x=(0.2, 0.2),     # 固定 0.2 m/s 前向
-            lin_vel_y=(0.0, 0.0),     # 无侧向
-            ang_vel_z=(0.0, 0.0),     # 不旋转
-            heading=(0.0, 0.0),       # 固定航向
-        )
-        self.commands.base_velocity.heading_command = False
-        self.commands.base_velocity.rel_heading_envs = 0.0
-        self.commands.base_velocity.rel_standing_envs = 0.0
+        # self.commands.base_velocity.ranges = mdp.UniformVelocityCommandCfg.Ranges(
+        #     lin_vel_x=(0.2, 0.2),     # 固定 0.2 m/s 前向
+        #     lin_vel_y=(0.0, 0.0),     # 无侧向
+        #     ang_vel_z=(0.0, 0.0),     # 不旋转
+        #     heading=(0.0, 0.0),       # 固定航向
+        # )
+        # self.commands.base_velocity.heading_command = False
+        # self.commands.base_velocity.rel_heading_envs = 0.0
+        # self.commands.base_velocity.rel_standing_envs = 0.0
 
 
 # ==================== 以下是 防止加载旧 checkpoint 时，如果 checkpoint 里的 deployment_metadata 和当前配置不同，代码会报警 ===============
@@ -901,9 +918,11 @@ def _assert_l5a_wf_deployment_metadata(metadata: dict[str, Any]) -> None:
     if len(metadata["policy_action_order"]) != metadata["action_dim"]:
         raise ValueError("L5A WF deployment metadata policy_action_order length does not match action_dim.")
     expected_indices = list(range(metadata["action_dim"]))
+    if metadata["policy_action_order"] != metadata["hardware_dof_order"]:
+        raise ValueError("L5A WF policy_action_order must directly match hardware_dof_order.")
     for key in ("policy_actions_to_hardware_indices", "hardware_state_to_policy_indices"):
-        if sorted(metadata[key]) != expected_indices:
-            raise ValueError(f"L5A WF deployment metadata {key} must be a permutation of {expected_indices}.")
+        if metadata[key] != expected_indices:
+            raise ValueError(f"L5A WF deployment metadata {key} must be the identity mapping {expected_indices}.")
 
 
 def build_l5a_wf_deployment_metadata() -> dict[str, Any]:
@@ -919,12 +938,27 @@ def build_l5a_wf_deployment_metadata() -> dict[str, Any]:
     history_samples = int(env_cfg.observations.obs_history.history_length)
     delay_cfg = env_cfg.scene.robot.actuators["all_joints"]
     delay_steps = [int(delay_cfg.min_delay), int(delay_cfg.max_delay)]
-    leg_action = env_cfg.actions.leg_pos
-    wheel_action = env_cfg.actions.wheel_vel
+    left_leg_action = env_cfg.actions.left_leg_pos
+    left_wheel_action = env_cfg.actions.left_wheel_vel
+    right_leg_action = env_cfg.actions.right_leg_pos
+    right_wheel_action = env_cfg.actions.right_wheel_vel
+    if (
+        left_leg_action.scale != right_leg_action.scale
+        or left_leg_action.use_default_offset != right_leg_action.use_default_offset
+        or left_leg_action.default_offset_range != right_leg_action.default_offset_range
+    ):
+        raise ValueError("Left and right leg action terms must use identical WF action semantics.")
+    if (
+        left_wheel_action.scale != right_wheel_action.scale
+        or left_wheel_action.use_default_offset != right_wheel_action.use_default_offset
+    ):
+        raise ValueError("Left and right wheel action terms must use identical WF action semantics.")
+    action_terms = [left_leg_action, left_wheel_action, right_leg_action, right_wheel_action]
+    policy_action_order = [joint_name for action_term in action_terms for joint_name in action_term.joint_names]
     imu_bias_range = env_cfg.events.imu_mounting_bias.params["roll_pitch_range_deg"]
 
     metadata = {
-        "schema_version": 1,
+        "schema_version": 2,
         "source_env_cfg": "L5AWFFlatEnvCfg",
         "physics_period_s": physics_period_s,
         "decimation": int(env_cfg.decimation),
@@ -932,12 +966,17 @@ def build_l5a_wf_deployment_metadata() -> dict[str, Any]:
         "history_samples": history_samples,
         "history_duration_s": _seconds(control_period_s * history_samples),
         "shared_action_delay_physics_steps": delay_steps,
-        "shared_action_delay_s": [_seconds(delay_steps[0] * physics_period_s), _seconds(delay_steps[1] * physics_period_s)],
-        "training_joint_zero_error_rad": _float_range(leg_action.default_offset_range),
+        "shared_action_delay_s": [
+            _seconds(delay_steps[0] * physics_period_s),
+            _seconds(delay_steps[1] * physics_period_s),
+        ],
+        "training_joint_zero_error_rad": _float_range(left_leg_action.default_offset_range),
         "training_imu_mounting_bias_deg": _float_range(imu_bias_range),
-        "proprioception_dim": 3 + 3 + len(LEG_JOINT_NAMES) + len(ACTUATED_JOINT_NAMES) + len(ACTUATED_JOINT_NAMES),
+        "proprioception_dim": (
+            3 + 3 + len(LEG_JOINT_NAMES) + len(WF_POLICY_DOF_NAMES) + len(WF_POLICY_DOF_NAMES)
+        ),
         "command_dim": 3,
-        "action_dim": len(leg_action.joint_names) + len(wheel_action.joint_names),
+        "action_dim": len(policy_action_order),
         "proprioception_layout": [
             {
                 "name": "base_angular_velocity",
@@ -955,33 +994,33 @@ def build_l5a_wf_deployment_metadata() -> dict[str, Any]:
                 "name": "leg_joint_position_relative",
                 "size": len(LEG_JOINT_NAMES),
                 "scale": _metadata_scale(env_cfg.observations.policy.leg_joint_pos),
-                "order": list(leg_action.joint_names),
+                "order": list(LEG_JOINT_NAMES),
             },
             {
                 "name": "joint_velocity_relative",
-                "size": len(ACTUATED_JOINT_NAMES),
+                "size": len(WF_POLICY_DOF_NAMES),
                 "scale": _metadata_scale(env_cfg.observations.policy.joint_vel),
-                "order": list(ACTUATED_JOINT_NAMES),
+                "order": list(WF_POLICY_DOF_NAMES),
             },
             {
                 "name": "previous_action",
-                "size": len(ACTUATED_JOINT_NAMES),
+                "size": len(WF_POLICY_DOF_NAMES),
                 "scale": _metadata_scale(env_cfg.observations.policy.last_action),
-                "order": list(ACTUATED_JOINT_NAMES),
+                "order": list(WF_POLICY_DOF_NAMES),
             },
         ],
         "command_order": ["linear_velocity_x", "linear_velocity_y", "angular_velocity_z"],
-        "policy_action_order": list(leg_action.joint_names) + list(wheel_action.joint_names),
+        "policy_action_order": policy_action_order,
         "policy_action_semantics": {
             "leg_position": {
-                "joints": list(leg_action.joint_names),
-                "scale": float(leg_action.scale),
-                "uses_default_offset": bool(leg_action.use_default_offset),
+                "joints": list(LEG_JOINT_NAMES),
+                "scale": float(left_leg_action.scale),
+                "uses_default_offset": bool(left_leg_action.use_default_offset),
             },
             "wheel_velocity": {
-                "joints": list(wheel_action.joint_names),
-                "scale": float(wheel_action.scale),
-                "uses_default_offset": bool(wheel_action.use_default_offset),
+                "joints": list(WHEEL_JOINT_NAMES),
+                "scale": float(left_wheel_action.scale),
+                "uses_default_offset": bool(left_wheel_action.use_default_offset),
             },
         },
         "hardware_dof_order": list(HARDWARE_DOF_NAMES),
@@ -1019,7 +1058,7 @@ def build_l5a_wf_export_metadata() -> dict[str, Any]:
     metadata = build_l5a_wf_deployment_metadata()
     env_cfg = L5AWFFlatEnvCfg()
     actuator = env_cfg.scene.robot.actuators["all_joints"]
-    joint_order = list(ACTUATED_JOINT_NAMES)
+    joint_order = list(WF_POLICY_DOF_NAMES)
     command_ranges = env_cfg.commands.base_velocity.ranges
     mjcf_path = PROJECT_ROOT / "resources" / "robots" / "l5a" / "xml" / "l5aurdf20260521.xml"
 
@@ -1042,7 +1081,7 @@ def build_l5a_wf_export_metadata() -> dict[str, Any]:
             },
             "joint_control": {
                 "order": joint_order,
-                "modes": ["position"] * len(LEG_JOINT_NAMES) + ["velocity"] * len(WHEEL_JOINT_NAMES),
+                "modes": ["position" if name in LEG_JOINT_NAMES else "velocity" for name in joint_order],
                 "stiffness": [_resolve_joint_parameter(actuator.stiffness, name) for name in joint_order],
                 "damping": [_resolve_joint_parameter(actuator.damping, name) for name in joint_order],
                 "effort_limits": [

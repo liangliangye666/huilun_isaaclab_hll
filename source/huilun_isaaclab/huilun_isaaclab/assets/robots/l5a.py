@@ -23,41 +23,43 @@ L5A_USD_PATH = PROJECT_ROOT / "resources" / "robots" / "l5a" / "usd" / "l5a20260
 # =============================================================================
 # ② 关节命名契约：策略侧 vs 真机侧
 # =============================================================================
-# 策略侧统一采用"先六个腿关节、后两个轮关节"的顺序：
-# [左 roll, 左 pitch, 左 knee, 右 roll, 右 pitch, 右 knee, 左轮, 右轮]。
-# 该顺序同时决定 8 维动作和按 ACTUATED_JOINT_NAMES 选取的关节状态排列。
-LEG_JOINT_NAMES = [
+# 左右分组既用于声明四个 ActionTerm，也用于构造腿/轮语义分组。
+LEFT_LEG_JOINT_NAMES = [
     "left_hip_roll_joint",
     "left_hip_pitch_joint",
     "left_knee_joint",
+]
+RIGHT_LEG_JOINT_NAMES = [
     "right_hip_roll_joint",
     "right_hip_pitch_joint",
     "right_knee_joint",
 ]
-WHEEL_JOINT_NAMES = ["left_wheel_joint", "right_wheel_joint"]
-ACTUATED_JOINT_NAMES = LEG_JOINT_NAMES + WHEEL_JOINT_NAMES
+LEFT_WHEEL_JOINT_NAMES = ["left_wheel_joint"]
+RIGHT_WHEEL_JOINT_NAMES = ["right_wheel_joint"]
+
+LEG_JOINT_NAMES = LEFT_LEG_JOINT_NAMES + RIGHT_LEG_JOINT_NAMES
+WHEEL_JOINT_NAMES = LEFT_WHEEL_JOINT_NAMES + RIGHT_WHEEL_JOINT_NAMES
 
 # 真机接口沿用"每条腿的三个关节紧邻该侧车轮"的顺序：
 # [左 roll, 左 pitch, 左 knee, 左轮, 右 roll, 右 pitch, 右 knee, 右轮]。
-# 训练策略顺序和硬件顺序不同，部署时必须显式重排，不能直接透传 8 维向量。
 HARDWARE_DOF_NAMES = [
-    "left_hip_roll_joint",
-    "left_hip_pitch_joint",
-    "left_knee_joint",
-    "left_wheel_joint",
-    "right_hip_roll_joint",
-    "right_hip_pitch_joint",
-    "right_knee_joint",
-    "right_wheel_joint",
+    *LEFT_LEG_JOINT_NAMES,
+    *LEFT_WHEEL_JOINT_NAMES,
+    *RIGHT_LEG_JOINT_NAMES,
+    *RIGHT_WHEEL_JOINT_NAMES,
 ]
-# 当前结果为 [0, 1, 2, 6, 3, 4, 5, 7]。
+# WF 的全关节观测、Actor 输出和执行器统一采用硬件顺序。
+WF_POLICY_DOF_NAMES = list(HARDWARE_DOF_NAMES)
+
+# 两个映射保留在 Manifest 契约中供通用部署程序校验；当前都是恒等映射。
+# 当前结果为 [0, 1, 2, 3, 4, 5, 6, 7]。
 # 用法：hardware_action = policy_action[..., POLICY_TO_HARDWARE_ACTION_INDICES]。
 # 列表中的每个元素都是该硬件 DOF 在策略向量中的列号。
-POLICY_TO_HARDWARE_ACTION_INDICES = [ACTUATED_JOINT_NAMES.index(name) for name in HARDWARE_DOF_NAMES]
-# 当前结果为 [0, 1, 2, 4, 5, 6, 3, 7]。
+POLICY_TO_HARDWARE_ACTION_INDICES = [WF_POLICY_DOF_NAMES.index(name) for name in HARDWARE_DOF_NAMES]
+# 当前结果为 [0, 1, 2, 3, 4, 5, 6, 7]。
 # 用法：policy_state = hardware_state[..., HARDWARE_TO_POLICY_STATE_INDICES]。
 # 列表中的每个元素都是该策略 DOF 在硬件状态向量中的列号。
-HARDWARE_TO_POLICY_STATE_INDICES = [HARDWARE_DOF_NAMES.index(name) for name in ACTUATED_JOINT_NAMES]
+HARDWARE_TO_POLICY_STATE_INDICES = [HARDWARE_DOF_NAMES.index(name) for name in WF_POLICY_DOF_NAMES]
 
 # 刚体名称用于接触传感器、几何奖励、质量/质心随机化等 SceneEntityCfg 解析。
 LEG_BODY_NAMES = [
@@ -79,7 +81,7 @@ L5A_NOMINAL_TRACK_WIDTH = 0.28
 L5A_NOMINAL_BASE_HEIGHT = 0.645
 
 
-# 基础资产保持原 IsaacGym L5A balance 任务的物理参数。
+# 基础资产保持既有 L5A 的物理参数。
 #
 # 控制语义由"环境里的 ActionTerm + 这里的隐式执行器"共同决定：
 # - 六个腿关节接收位置目标，由非零 stiffness/damping 形成隐式 PD；
@@ -137,7 +139,7 @@ L5A_CFG = ArticulationCfg(
         ),
     },
 )
-"""L5A articulation configuration preserved from the IsaacGym balance task."""
+"""L5A articulation configuration shared by the WF task."""
 
 
 # WF 训练使用同一套 L5A 机械参数，只把执行器替换为带命令延迟的版本。
@@ -146,7 +148,7 @@ L5A_CFG = ArticulationCfg(
 L5A_WF_CFG = L5A_CFG.copy()
 L5A_WF_CFG.actuators = {
     "all_joints": DelayedImplicitActuatorCfg(
-        joint_names_expr=ACTUATED_JOINT_NAMES,
+        joint_names_expr=WF_POLICY_DOF_NAMES,
         effort_limit_sim={".*hip.*": 90.0, ".*knee.*": 130.0, ".*wheel.*": 90.0},
         velocity_limit_sim={".*hip.*": 16.433, ".*knee.*": 14.653, ".*wheel.*": 16.433},
         stiffness={

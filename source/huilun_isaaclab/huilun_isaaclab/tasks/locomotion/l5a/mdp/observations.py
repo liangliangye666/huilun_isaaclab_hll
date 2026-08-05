@@ -23,25 +23,7 @@ from isaaclab.managers import SceneEntityCfg
 from isaaclab.sensors import ContactSensor
 
 if TYPE_CHECKING:
-    from isaaclab.envs import ManagerBasedEnv, ManagerBasedRLEnv
-
-
-def velocity_height_commands(
-    env: ManagerBasedRLEnv,
-    command_name: str,
-    target_height: float,
-) -> torch.Tensor:
-    """拼接速度指令与固定基座高度目标。
-
-    速度部分保持 CommandManager 给出的原始列顺序，最后追加一列
-    ``target_height``。该辅助项供 balance 任务使用，不会在此函数内缩放或裁剪。
-    """
-    # ① 取出速度指令 [N, 3]（通常为 vx, vy, omega_z）
-    velocity_command = env.command_manager.get_command(command_name)
-    # ② 追加固定高度目标 [N, 1]
-    height_command = torch.full_like(velocity_command[:, :1], target_height)
-    # ③ 拼接：[vx, vy, omega_z, target_height] → [N, 4]
-    return torch.cat((velocity_command, height_command), dim=1)
+    from isaaclab.envs import ManagerBasedEnv
 
 
 def base_ang_vel_with_imu_bias(

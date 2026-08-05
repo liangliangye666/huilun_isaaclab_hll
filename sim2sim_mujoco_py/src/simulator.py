@@ -246,8 +246,8 @@ class MujocoAdapter:
     """封装 MuJoCo model/data，并按 Manifest 名称读写机器人状态。
 
     所有关节、执行器、传感器、基座和 keyframe 都按名称解析，不依赖
-    ``qpos[-N:]`` 或固定 id。对外关节状态统一使用 ``policy_action_order``，写入
-    ``data.ctrl`` 前则使用 ``hardware_actuator_order``。
+    ``qpos[-N:]`` 或固定 id。策略、MuJoCo 和硬件必须使用完全相同的关节顺序；
+    本类只校验这个直通契约，不执行状态或力矩重排。
     """
     '''
     输入参数：
@@ -284,21 +284,29 @@ class MujocoAdapter:
                                                     训练脚本中 env_cfg.sim.dt 的值
         '''
 
-        # ======== [3] 保存关节顺序信息 ===========
-        self.policy_order = list(self.deployment["policy_action_order"])    # 策略的关节排列顺序
-        self.hardware_order = list(self.deployment["hardware_dof_order"])   # 硬件的关节排列顺序
+        # ======== [3] 校验并保存唯一关节顺序 ===========
+        self.joint_order = list(self.deployment["policy_action_order"])
+        hardware_dof_order = list(self.deployment["hardware_dof_order"])
+        if self.joint_order != hardware_dof_order:
+            raise DeploymentError(
+                "policy_action_order 必须与 hardware_dof_order 逐项相同；"
+                "MujocoAdapter 不做关节顺序适配。"
+            )
         robot_model = self.deployment["robot_model"]
         actuator_names = list(self.deployment["hardware_actuator_order"])
-        if len(actuator_names) != len(self.hardware_order):
-            raise DeploymentError("hardware_actuator_order 与 hardware_dof_order 长度不一致。")
+        if actuator_names != self.joint_order:
+            raise DeploymentError(
+                "hardware_actuator_order 必须与 policy_action_order 逐项相同；"
+                "MujocoAdapter 不做执行器顺序适配。"
+            )
 
-        # ======== [4] 解析策略关节的 ID 和地址 ===========
+        # ======== [4] 按唯一顺序解析关节 ID 和地址 ===========
         # qpos/qvel 是全模型扁平数组，必须通过关节 id 对应的地址读取受控关节。
-        self.policy_joint_ids = np.asarray(     # 每个策略关节在 model 中的 ID
-            [_named_id(self.model, mujoco.mjtObj.mjOBJ_JOINT, name) for name in self.policy_order],
+        self.joint_ids = np.asarray(
+            [_named_id(self.model, mujoco.mjtObj.mjOBJ_JOINT, name) for name in self.joint_order],
             dtype=np.int32,
         )
-        for joint_id, joint_name in zip(self.policy_joint_ids, self.policy_order, strict=True):
+        for joint_id, joint_name in zip(self.joint_ids, self.joint_order, strict=True):
             joint_type = self.model.jnt_type[joint_id]
             if joint_type not in (mujoco.mjtJoint.mjJNT_HINGE, mujoco.mjtJoint.mjJNT_SLIDE):
                 raise DeploymentError(f"受控关节 {joint_name!r} 必须是单自由度 hinge 或 slide。")
@@ -306,17 +314,16 @@ class MujocoAdapter:
         关节类型校验：MuJoCo 支持多种关节类型——free（6 自由度自由体）、ball（3 自由度球关节）、hinge（1 自由度旋转关节）、slide（1 自由度平移关节）。
         这里要求受控关节必须是单自由度的 hinge 或 slide，因为 PD 控制器只能处理单自由度关节。
         '''
-        self.policy_qpos_addresses = self.model.jnt_qposadr[self.policy_joint_ids].copy()   # 每个策略关节在 data.qpos 中的起始地址
-        self.policy_dof_addresses = self.model.jnt_dofadr[self.policy_joint_ids].copy()     # 每个策略关节在 data.qvel 中的起始地址
+        self.qpos_addresses = self.model.jnt_qposadr[self.joint_ids].copy()
+        self.dof_addresses = self.model.jnt_dofadr[self.joint_ids].copy()
 
-        # ======== [5] 解析硬件执行器 ID 并验证传动连接 ===========
-        # actuator 名称与关节名称允许不同，因此分别读取两套 order 并验证传动连接。
-        self.hardware_actuator_ids = np.asarray(        # 每个硬件执行器在 model 中的 ID
+        # ======== [5] 按唯一顺序解析执行器 ID 并验证传动连接 ===========
+        self.actuator_ids = np.asarray(
             [_named_id(self.model, mujoco.mjtObj.mjOBJ_ACTUATOR, name) for name in actuator_names],
             dtype=np.int32,
         )
         for actuator_id, actuator_name, joint_name in zip(
-            self.hardware_actuator_ids, actuator_names, self.hardware_order, strict=True
+            self.actuator_ids, actuator_names, self.joint_order, strict=True
         ):
             joint_id = _named_id(self.model, mujoco.mjtObj.mjOBJ_JOINT, joint_name)
             if int(self.model.actuator_trnid[actuator_id, 0]) != joint_id:
@@ -349,10 +356,10 @@ class MujocoAdapter:
         mujoco.mj_resetDataKeyframe(self.model, self.data, self.keyframe_id)
         mujoco.mj_forward(self.model, self.data)
 
-    def joint_state_policy(self) -> tuple[np.ndarray, np.ndarray]:
-        """返回 ``policy_action_order`` 下的关节位置和速度副本。"""
-        q = np.asarray(self.data.qpos[self.policy_qpos_addresses]).copy()
-        dq = np.asarray(self.data.qvel[self.policy_dof_addresses]).copy()
+    def joint_state(self) -> tuple[np.ndarray, np.ndarray]:
+        """按唯一关节顺序返回关节位置和速度副本。"""
+        q = np.asarray(self.data.qpos[self.qpos_addresses]).copy()
+        dq = np.asarray(self.data.qvel[self.dof_addresses]).copy()
         return q, dq
 
     def orientation_wxyz(self) -> np.ndarray:
@@ -374,13 +381,13 @@ class MujocoAdapter:
         """返回基座 body 在世界坐标系中的 z 坐标，用于摔倒统计。"""
         return float(self.data.xpos[self.base_body_id, 2])
 
-    def apply_hardware_torque(self, torque: np.ndarray) -> None:
-        """把 ``hardware_actuator_order`` 下的力矩写入 ``data.ctrl``。"""
+    def apply_torque(self, torque: np.ndarray) -> None:
+        """按唯一关节顺序把力矩直接写入对应的 ``data.ctrl``。"""
         torque = np.asarray(torque, dtype=np.float64)
-        expected_shape = (len(self.hardware_actuator_ids),)
+        expected_shape = (len(self.actuator_ids),)
         if torque.shape != expected_shape:
-            raise ValueError(f"硬件顺序力矩 shape 应为 {expected_shape}，实际为 {torque.shape}。")
-        self.data.ctrl[self.hardware_actuator_ids] = torque
+            raise ValueError(f"关节力矩 shape 应为 {expected_shape}，实际为 {torque.shape}。")
+        self.data.ctrl[self.actuator_ids] = torque
 
     def step(self) -> None:
         """推进一个 MuJoCo 物理步，并立即检查状态是否出现 NaN/Inf。"""
@@ -471,8 +478,8 @@ class Sim2SimRunner:
         它从 MuJoCo 仿真器中读取原始物理数据（关节角度、角速度、基座姿态四元数），打包后交给 ObservationBuilder 拼成策略网络能理解的 28 维 proprioception 向量。
     '''
     def _observe(self) -> np.ndarray:
-        """读取最新 MuJoCo 状态，构造一帧 policy_order 下的 proprioception。"""
-        q, dq = self.adapter.joint_state_policy()   # 读取关节状态
+        """读取最新 MuJoCo 状态，构造一帧统一关节顺序下的 proprioception。"""
+        q, dq = self.adapter.joint_state()   # 读取关节状态
         return self.observation_builder.build(
             self.adapter.angular_velocity(),        # 读取角速度传感器
             self.adapter.orientation_wxyz(),        # 读取姿态传感器
@@ -484,15 +491,15 @@ class Sim2SimRunner:
     _observe()
     │
     ├─ [1] 从 MuJoCo 读取关节状态
-    │   └─ self.adapter.joint_state_policy()
+    │   └─ self.adapter.joint_state()
     │       │
-    │       ├─ data.qpos[policy_qpos_addresses] → q [8]
-    │       │     ← policy_order 下 8 个关节的当前位置
-    │       │       例如: [0.05, 0.26, -0.56, -0.05, 0.26, -0.56, 0.0, 0.0]
+    │       ├─ data.qpos[qpos_addresses] → q [8]
+    │       │     ← [左三腿, 左轮, 右三腿, 右轮] 下的当前位置
+    │       │       例如: [0.05, 0.26, -0.56, 0.0, -0.05, 0.26, -0.56, 0.0]
     │       │
-    │       └─ data.qvel[policy_dof_addresses] → dq [8]
-    │             ← policy_order 下 8 个关节的当前速度
-    │               例如: [0.01, -0.02, 0.0, -0.01, -0.02, 0.0, 5.2, 5.2]
+    │       └─ data.qvel[dof_addresses] → dq [8]
+    │             ← [左三腿, 左轮, 右三腿, 右轮] 下的当前速度
+    │               例如: [0.01, -0.02, 0.0, 5.2, -0.01, -0.02, 0.0, 5.2]
     │
     ├─ [2] 从 MuJoCo 读取基座姿态传感器
     │   └─ self.adapter.angular_velocity()
@@ -547,7 +554,7 @@ class Sim2SimRunner:
         self,
         estimated_velocity: np.ndarray,
         action: np.ndarray,
-        torque_policy: np.ndarray,
+        torque: np.ndarray,
     ) -> None:
         """按策略步缓存可选调试轨迹，用于离线检查观测、动作和力矩。"""
         if self.trace_path is None:
@@ -561,7 +568,8 @@ class Sim2SimRunner:
             "proprioception": self.current_observation.copy(),
             "estimated_base_linear_velocity": estimated_velocity.copy(),
             "action": action.copy(),
-            "torque_policy": torque_policy.copy(),
+            # 保留既有 trace 字段名，值已采用统一直通顺序。
+            "torque_policy": torque.copy(),
         }
         for key, value in values.items():
             self.trace.setdefault(key, []).append(value)
@@ -671,7 +679,7 @@ class Sim2SimRunner:
                 )
                 # previous_action 保存的是 Actor 原始输出（下一帧观测会用到它），不是经过延迟缓冲后的实际控制动作。
                 self.previous_action = action.copy()
-                last_torque_policy = np.zeros(self.policy.action_dim, dtype=np.float64)
+                last_torque = np.zeros(self.policy.action_dim, dtype=np.float64)
 
                 # ================================================================
                 # 阶段 2：物理执行（同一个 action 在 decimation 个物理步中保持）
@@ -680,14 +688,12 @@ class Sim2SimRunner:
                     # 如果 delay_steps=2: 当前 action 入队，弹出 2 步前的旧 action
                     delayed_action = self.delay.apply(action)       # → delayed_action [8]
                     # 从 data.qpos/qvel 中按预计算地址读取
-                    q, dq = self.adapter.joint_state_policy()       # → q [8], dq [8]
+                    q, dq = self.adapter.joint_state()       # → q [8], dq [8]
                     # position 关节: kp*(q_target-q) + kd*(0-dq)
                     # velocity 关节: kd*(dq_target-dq)
-                    last_torque_policy = self.controller.compute_policy_torque(delayed_action, q, dq)   # → torque [8]
-                    # 重排为 hardware_dof_order
-                    hardware_torque = self.controller.to_hardware_order(last_torque_policy) # → hardware_torque [8]
-                    # 写入 data.ctrl[actuator_ids]
-                    self.adapter.apply_hardware_torque(hardware_torque)
+                    last_torque = self.controller.compute_torque(delayed_action, q, dq)   # → torque [8]
+                    # 策略、MuJoCo 和硬件顺序已统一，力矩直接写入 data.ctrl[actuator_ids]。
+                    self.adapter.apply_torque(last_torque)
                     # mujoco.mj_step(model, data)  ← 真正的物理推进
                     self.adapter.step()
                     physics_steps += 1
@@ -702,13 +708,13 @@ class Sim2SimRunner:
                 # 读取最新的 MuJoCo 状态，拼接成 28 维 proprioception，追加到历史窗口（10 帧 oldest-to-newest 滑动窗口）
                 self.current_observation = self._observe()
                 self.history.append(self.current_observation)
-                self._record(estimated_velocity, action, last_torque_policy)
+                self._record(estimated_velocity, action, last_torque)
                 policy_steps += 1
                 if viewer is not None:
                     viewer.sync()   # 每个策略周期刷新一次画面
                     '''
                     为什么不在每个物理步刷新？
-                        因为渲染比物理计算慢得多，20Hz 的策略周期刷新已经足够流畅，200Hz 刷新浪费性能。
+                        因为渲染比物理计算慢得多，50Hz 的策略周期刷新已经足够流畅，200Hz 刷新浪费性能。
                     '''
 
                 # ================================================================

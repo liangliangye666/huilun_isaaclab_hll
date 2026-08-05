@@ -49,6 +49,52 @@ def _required(mapping: dict[str, Any], key: str, location: str) -> Any:
     return mapping[key]
 
 
+def _validate_direct_joint_order(deployment: dict[str, Any]) -> None:
+    """验证策略、MuJoCo 与硬件共用同一套关节顺序。
+
+    当前运行时不提供关节重排适配层。Manifest 仍保留两个映射字段用于
+    显式校验导出契约，但它们必须都是恒等映射。
+    """
+    policy_order = list(_required(deployment, "policy_action_order", "deployment"))
+    hardware_order = list(_required(deployment, "hardware_dof_order", "deployment"))
+    if not policy_order or len(set(policy_order)) != len(policy_order):
+        raise DeploymentError("policy_action_order 必须是非空且无重复的关节列表。")
+    if policy_order != hardware_order:
+        raise DeploymentError(
+            "policy_action_order 必须与 hardware_dof_order 逐项相同；"
+            "当前 sim2sim 不做关节顺序适配。"
+        )
+
+    order_fields = {
+        "hardware_actuator_order": list(_required(deployment, "hardware_actuator_order", "deployment")),
+        "default_joint_positions.order": list(
+            _required(
+                _required(deployment, "default_joint_positions", "deployment"),
+                "order",
+                "deployment.default_joint_positions",
+            )
+        ),
+        "joint_control.order": list(
+            _required(
+                _required(deployment, "joint_control", "deployment"),
+                "order",
+                "deployment.joint_control",
+            )
+        ),
+    }
+    for field, order in order_fields.items():
+        if order != policy_order:
+            raise DeploymentError(
+                f"deployment.{field} 必须与 policy_action_order 逐项相同；实际为 {order}。"
+            )
+
+    identity = list(range(len(policy_order)))
+    for key in ("policy_actions_to_hardware_indices", "hardware_state_to_policy_indices"):
+        indices = [int(index) for index in _required(deployment, key, "deployment")]
+        if indices != identity:
+            raise DeploymentError(f"deployment.{key} 必须是恒等映射 {identity}，实际为 {indices}。")
+
+
 @dataclass(frozen=True)
 class DeploymentBundle:
     """已经读取的模型目录、MJCF 路径和 Manifest 内容。
@@ -128,8 +174,8 @@ def load_deployment(model_dir: str | Path, mjcf_path: str | Path) -> DeploymentB
     # 启动前确认两个运行时 ONNX 文件确实存在。JIT 文件和 hash 不参与 Python sim2sim。
     bundle.model_path("velocity_estimator")
     bundle.model_path("policy")
-    # Manifest 顶层字段校验
-    _required(bundle.manifest, "deployment", "root")
+    # Manifest 顶层字段及统一关节顺序校验
+    _validate_direct_joint_order(bundle.deployment)
     return bundle
 
 
@@ -176,7 +222,7 @@ class SplitOnnxPolicy:
         2. 验证 Encoder 是 1 输入 1 输出，Actor 是 3 输入 1 输出
         3. 验证 Actor 的三个输入名称必须是固定语义名
         4. 验证 Encoder 输出 shape 与 Actor 的 estimated_base_linear_velocity 输入一致
-        5. 创建 ONNX Runtime 会话（单线程，避免 100Hz 循环中的调度抖动）
+        5. 创建 ONNX Runtime 会话（单线程，减少控制循环中的调度抖动）
         6. 执行 Manifest 与 ONNX 文件的签名交叉验证（fail fast）
         """
         self.bundle = bundle
@@ -219,7 +265,7 @@ class SplitOnnxPolicy:
             raise DeploymentError("Encoder 输出 shape 与 Actor 的 estimated_base_linear_velocity 输入 shape 不一致。")
 
         # ---- 创建 ONNX Runtime 会话 ----
-        # 策略网络较小，限制为单线程可减少 100 Hz 循环中的线程调度抖动。
+        # 策略网络较小，限制为单线程可减少控制循环中的线程调度抖动。
         # graph_optimization_level 设为 ALL 以启用 ONNX Runtime 的所有图优化。
         options = ort.SessionOptions()
         options.intra_op_num_threads = 1

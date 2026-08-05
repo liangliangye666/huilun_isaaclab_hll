@@ -40,8 +40,8 @@
      │  MuJoCo 仿真  │  ← 力矩写入执行器，推进一个物理步（~5ms）
      └──────────────┘
 
-一个策略周期 = 一次 Encoder + 一次 Actor + decimation 个物理步（如 10 步 = 50ms）。
-策略动作在这 10 个物理步中保持不变，但每个物理步都重新读取关节状态并重新计算 PD 力矩。
+一个策略周期 = 一次 Encoder + 一次 Actor + Manifest 指定的 decimation 个物理步。
+策略动作在这些物理步中保持不变，但每个物理步都重新读取关节状态并重新计算 PD 力矩。
 
 本文件只保存用户经常调整的运行参数。实际数据流由 ``src/simulator.py``负责组织。
 """
@@ -62,7 +62,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
 
 # ---- 模型与机器人 ----
 # exported 目录必须包含 policy_manifest.json、policy.onnx 和 velocity_estimator.onnx。
-MODEL_DIR = REPOSITORY_ROOT / "logs/rsl_rl/l5a_wf_flat/2026-07-31_23-57-49/exported"
+MODEL_DIR = REPOSITORY_ROOT / "logs/rsl_rl/l5a_wf_flat/2026-08-05_01-13-53/exported"
 
 # 与这组策略匹配的 MuJoCo XML。更换机器人时同时修改 MODEL_DIR 和 MJCF_PATH。
 # XML 里定义了机器人的关节、质量、执行器、传感器等物理属性。

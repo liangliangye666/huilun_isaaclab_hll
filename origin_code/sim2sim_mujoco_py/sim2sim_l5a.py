@@ -122,7 +122,7 @@ def run_mujoco(policy, estimator, cfg):
 
     # default_q、q、dq、target_q、target_dq 和 tau 均使用 MuJoCo/硬件顺序：
     # [左 roll, 左 pitch, 左 knee, 左轮, 右 roll, 右 pitch, 右 knee, 右轮]。
-    default_q = cfg.asset.default_q_policy[cfg.asset.policy_to_mujoco_indices]
+    default_q = cfg.asset.default_q
 
     # [3] 首次物理步 + 启动 viewer
     mujoco.mj_step(model, data)
@@ -144,12 +144,8 @@ def run_mujoco(policy, estimator, cfg):
         q = q[-cfg.env.num_actions :]       # ← 只取最后 8 个关节
         dq = dq[-cfg.env.num_actions :]     # ← 只取最后 8 个关节
 
-        # MuJoCo 顺序转换为训练策略顺序：六个腿关节在前，两个轮关节在后。
-        q_policy = q[cfg.asset.mujoco_to_policy_indices]
-        dq_policy = dq[cfg.asset.mujoco_to_policy_indices]
-
         # [5b] 策略推理（每 decimation 步一次）
-        # 200 Hz physics -> 100 Hz policy
+        # 200 Hz physics -> 50 Hz policy（decimation=4）
         if count_lowlevel % cfg.sim_config.decimation == 0:
             # 当前 WF policy 的单帧 proprioception 共 28 维：
             # 拼接 proprio_obs [1, 28]：3 维角速度 + 3 维投影重力 + 6 维腿位置 + 8 维关节速度 + 8 维上一动作。
@@ -157,10 +153,10 @@ def run_mujoco(policy, estimator, cfg):
             proprio_obs[0, 0:3] = omega * cfg.normalization.obs_scales.ang_vel
             proprio_obs[0, 3:6] = gvec * cfg.normalization.obs_scales.gravity
             proprio_obs[0, 6:12] = (
-                q_policy[cfg.asset.policy_leg_indices]
-                - cfg.asset.default_q_policy[cfg.asset.policy_leg_indices]
+                q[cfg.asset.leg_indices]
+                - cfg.asset.default_q[cfg.asset.leg_indices]
             ) * cfg.normalization.obs_scales.dof_pos
-            proprio_obs[0, 12:20] = dq_policy * cfg.normalization.obs_scales.dof_vel
+            proprio_obs[0, 12:20] = dq * cfg.normalization.obs_scales.dof_vel
             proprio_obs[0, 20:28] = action * cfg.normalization.obs_scales.last_action
             proprio_obs = np.clip(
                 proprio_obs,
@@ -193,15 +189,14 @@ def run_mujoco(policy, estimator, cfg):
             # 裁剪 action
             action = np.clip(action, -cfg.normalization.clip_actions, cfg.normalization.clip_actions)
 
-        # [5c] 计算控制目标（每个物理步都执行）：策略动作顺序转换为 MuJoCo/硬件顺序。
-        action_mujoco = action[cfg.asset.policy_to_mujoco_indices]
-        target_q[cfg.asset.mujoco_leg_indices] = (      # target_q[腿] = action * action_scale_pos
-            action_mujoco[cfg.asset.mujoco_leg_indices] * cfg.control.action_scale_pos
+        # [5c] 计算控制目标（每个物理步都执行）：动作已是 MuJoCo/硬件顺序。
+        target_q[cfg.asset.leg_indices] = (      # target_q[腿] = action * action_scale_pos
+            action[cfg.asset.leg_indices] * cfg.control.action_scale_pos
         )
-        target_dq[cfg.asset.mujoco_wheel_indices] = (   # target_dq[轮] = action * action_scale_vel
-            action_mujoco[cfg.asset.mujoco_wheel_indices] * cfg.control.action_scale_vel
+        target_dq[cfg.asset.wheel_indices] = (   # target_dq[轮] = action * action_scale_vel
+            action[cfg.asset.wheel_indices] * cfg.control.action_scale_vel
         )
-        print("action:", action[cfg.asset.policy_wheel_indices])
+        print("action:", action[cfg.asset.wheel_indices])
 
         # [5d] PD 控制 + 写入力矩
         # Generate PD control
@@ -288,17 +283,11 @@ if __name__ == "__main__":
             dt = deployment["physics_period_s"]
             decimation = deployment["decimation"]
 
-        # 关节顺序映射 + 默认关节角
+        # 固定顺序：[左三腿, 左轮, 右三腿, 右轮]。
         class asset:
-            # 策略顺序：[左三腿, 右三腿, 左轮, 右轮]
-            # MuJoCo 顺序：[左三腿, 左轮, 右三腿, 右轮]
-            mujoco_to_policy_indices = np.array([0, 1, 2, 4, 5, 6, 3, 7], dtype=np.int64)
-            policy_to_mujoco_indices = np.array([0, 1, 2, 6, 3, 4, 5, 7], dtype=np.int64)
-            policy_leg_indices = np.array([0, 1, 2, 3, 4, 5], dtype=np.int64)
-            policy_wheel_indices = np.array([6, 7], dtype=np.int64)
-            mujoco_leg_indices = np.array([0, 1, 2, 4, 5, 6], dtype=np.int64)
-            mujoco_wheel_indices = np.array([3, 7], dtype=np.int64)
-            default_q_policy = np.array(
+            leg_indices = np.array([0, 1, 2, 4, 5, 6], dtype=np.int64)
+            wheel_indices = np.array([3, 7], dtype=np.int64)
+            default_q = np.array(
                 deployment["default_joint_positions"]["values"],
                 dtype=np.double,
             )
@@ -323,16 +312,10 @@ if __name__ == "__main__":
 
         # PD 参数（kps, kds, tau_limit）
         class robot_config:
-            # Manifest 中的控制参数是策略顺序，PD 计算前转换为 MuJoCo 顺序。
-            kps = np.array(deployment["joint_control"]["stiffness"], dtype=np.double)[
-                [0, 1, 2, 6, 3, 4, 5, 7]
-            ]
-            kds = np.array(deployment["joint_control"]["damping"], dtype=np.double)[
-                [0, 1, 2, 6, 3, 4, 5, 7]
-            ]
-            tau_limit = np.array(deployment["joint_control"]["effort_limits"], dtype=np.double)[
-                [0, 1, 2, 6, 3, 4, 5, 7]
-            ]
+            # Manifest 控制参数已与 MuJoCo/硬件顺序一致，直接使用。
+            kps = np.array(deployment["joint_control"]["stiffness"], dtype=np.double)
+            kds = np.array(deployment["joint_control"]["damping"], dtype=np.double)
+            tau_limit = np.array(deployment["joint_control"]["effort_limits"], dtype=np.double)
 
     '''
     [5] 加载 TorchScript 模型

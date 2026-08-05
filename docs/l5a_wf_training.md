@@ -8,9 +8,6 @@ L5A 部署契约。代码结构以本项目的 Manager-Based IsaacLab 框架为�
 
 - 训练：`Huilun-L5A-WF-Flat-v0`
 - 播放/导出：`Huilun-L5A-WF-Flat-Play-v0`
-- 原有平衡任务仍保留：
-  - `Huilun-L5A-Balance-v0`
-  - `Huilun-L5A-Balance-Play-v0`
 
 训练命令：
 
@@ -86,12 +83,10 @@ Critic 使用 68 维特权观测加 3 维 command，共 71 维。特权内容包
 base velocity、关节 torque/acceleration、轮体速度、随机化后的当前质量和
 轮地接触力。
 
-L5A 保持 `dt=0.005 s`、`decimation=2`，所以策略频率为 100 Hz。10 帧历史
-是一个 0.10 s 的采样窗口（最旧与最新样本时间戳相差 0.09 s）；TRON2 的
-`decimation=4` 对应 0.20 s 采样窗口。这是为了同时满足
-“不修改 L5A decimation”和“使用 10 帧 Encoder”的明确选择。若后续实测
-发现速度估计需要更长时间上下文，应单独比较 10/15/20 帧，而不是修改
-L5A 控制周期。
+L5A 保持 `dt=0.005 s`，并使用 `decimation=4`，所以策略频率为 50 Hz。
+10 帧历史在训练/部署契约中覆盖 0.20 s，最旧与最新样本的时间戳相差
+0.18 s。Encoder 的输入 shape 仍是 `[N, 10, 28]`，但每帧代表的真实时间已改变，
+因此不应继续把旧 checkpoint 当作相同控制契约使用。
 
 ## 3. 动作与 L5A 硬约束
 
@@ -101,17 +96,20 @@ L5A 控制周期。
 0 left_hip_roll_joint       position, scale 0.25 + randomized default
 1 left_hip_pitch_joint      position, scale 0.25 + randomized default
 2 left_knee_joint           position, scale 0.25 + randomized default
-3 right_hip_roll_joint      position, scale 0.25 + randomized default
-4 right_hip_pitch_joint     position, scale 0.25 + randomized default
-5 right_knee_joint          position, scale 0.25 + randomized default
-6 left_wheel_joint          velocity, scale 0.5
-7 right_wheel_joint         velocity, scale 0.5
+3 left_wheel_joint          velocity, scale 1.0
+4 right_hip_roll_joint      position, scale 0.25 + randomized default
+5 right_hip_pitch_joint     position, scale 0.25 + randomized default
+6 right_knee_joint          position, scale 0.25 + randomized default
+7 right_wheel_joint         velocity, scale 1.0
 ```
+
+该顺序与真机 DOF 顺序完全相同，因此 Manifest 中的策略动作到硬件动作、
+硬件状态到策略状态两个映射都是 `[0, 1, 2, 3, 4, 5, 6, 7]`。
 
 以下 L5A 参数保持不变：
 
 - physics `dt=0.005 s`
-- policy `decimation=2`
+- policy `decimation=4` (`control_period=0.02 s`, 50 Hz)
 - wheel radius `0.127 m`
 - nominal track width `0.28 m`，允许范围 `0.27–0.30 m`
 - target base height `0.645 m`
@@ -199,13 +197,13 @@ commands             [N, 3]
 策略输出转硬件顺序：
 
 ```text
-[a0, a1, a2, a6, a3, a4, a5, a7]
+[a0, a1, a2, a3, a4, a5, a6, a7]
 ```
 
 硬件 joint state 转策略顺序：
 
 ```text
-[q0, q1, q2, q4, q5, q6, q3, q7]
+[q0, q1, q2, q3, q4, q5, q6, q7]
 ```
 
 这些顺序、观测布局、缩放和控制周期会同时写入
@@ -222,8 +220,8 @@ commands             [N, 3]
   - Encoder optimizer state
   - 训练时的部署 metadata
 - 恢复训练时按目标 device 加载。
-- 若旧 checkpoint 的部署 metadata 与当前配置不同，加载时会警告，并以
-  checkpoint 中的契约生成 manifest，避免给旧权重贴上新观测布局。
+- 若旧 checkpoint 的部署 metadata 与当前配置不同，Runner 会直接拒绝加载，
+  避免给旧权重贴上新观测、动作或控制周期契约。
 - PPO rollout 通过 TensorDict 原样保存 history 和显式 estimator target。
 - 导出模型已将 Encoder 和 Actor 串成一个可直接推理的组合模型，同时保留
   单独 Encoder 文件用于速度估计诊断。
