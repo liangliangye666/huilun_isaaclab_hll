@@ -1,0 +1,200 @@
+{
+	"board":	{
+		"note": "0: 小板(RK3588_V0.1 2025-06-12), 1: 大板(RK3588_L_V0.1 2025-08-15)",
+		"type":	1
+	},
+	"wheel":	{
+		"note":	"轮组算法",
+		"standmode_file":	"config/standmode_param.cjson",
+		"standmode_period":	5000000,
+		"cpu":	-1,
+		"gesture_up":	80,
+		"gesture_down":	40,
+		"gesture_left":	53,
+		"gesture_right":	44,
+		"use_arm_algorithms":	0,
+		"arm_path":	"/user_space/user/wheel",
+		"io1":	[1, 2],
+		"test":	0,
+		"debug_note":	"trace: 0, debug:1, info:2, warn:3, err:4, critical:5, off: 6",
+		"debug":	2
+	},
+	"gacec":	{
+		"note":	"EtherCAT控制",
+		"slave_file":	"config/slaves-y4a.json",
+		"param_file":	"config/robot-ec-param-y4a.json",
+		"robot_mode":	"default",
+		"cpu":	-1,
+		"sim":	0,
+		"debug":	0
+	},
+	"gaccan":	{
+		"note":	"CAN控制",
+		"param_file":	"config/robot-can-param.json",
+		"robot_mode":	"default",
+		"sim":	0,
+		"debug":	0
+	},
+	"edu_robot":	{
+		"note":	"教育机器人底盘",
+		"can_param_file":	"config/robot-can-param.json",
+		"period":	8000000,
+		"wheel_note":	"正前方为X方向, 左边为Y方向, unit:m m/s rad/s; r为半径, 四轮: x为中心点到前轮垂直距离, y为中心点到左轮垂直距离; 两轮: x为0, y为两个轮子距离",
+		"wheel_x":	0.16,
+		"wheel_y":	0.21277,
+		"wheel_r":	0.1016,
+		"velocity":	1,
+		"algorithms_note":	"mecanum: 麦克纳母轮算法(四轮), differential: 差速算法(两轮)",
+		"algorithms":	"mecanum",
+		"debug_note":	"trace: 0, debug:1, info:2, warn:3, err:4, critical:5, off: 6",
+		"debug":	2
+	},
+	"imu_note": {
+		"device_type":	"0: 正装; 1: 反装; 2: TYPE_IMU TYPE_AHRS",
+		"type":	"XSEN: 0, N100: 1, IMU5105: 2, lidar: 3, H30: 4",
+		"device":	"XSEN: /dev/ttyS0(a40i:ttyS3 rk3588:ttyS0), N100: /dev/ttyUSB0, IMU5105: /dev/ttyUSB0, lidar: 无, H30: /dev/ttyACM0",
+		"baud":	"0: 使用默认波特率 XSEN: 115200, N100: 921600, IMU5105: 460800, lidar: 无, H30: 460800"
+	},
+	"imu":	[{
+			"use":	1,
+			"name":	"imu0",
+			"device_type":	2,
+			"type":	1,
+			"device":	"/dev/ttyUSB0",
+			"baud":	0,
+			"debug":	false
+		}, {
+			"use":	0,
+			"name":	"imu1",
+			"device_type":	2,
+			"type":	1,
+			"device":	"/dev/ttyUSB0",
+			"baud":	0,
+			"debug":	false
+		}, {
+			"use":	0,
+			"name":	"imu2",
+			"device_type":	2,
+			"type":	1,
+			"device":	"/dev/ttyUSB0",
+			"baud":	0,
+			"debug":	false
+		}],
+	"led":	{
+		"use":	1,
+		"device_type_note":	"1: led灯带; 2: 造型灯效",
+		"device_type":	1
+	},
+	"running_machine":	{
+		"note":	"跑步机",
+		"use":	0,
+		"type":	"rtu",
+		"ip":	"192.168.8.1",
+		"device":	"/dev/ttyS5",
+		"baud":	9600,
+		"debug":	0
+	},
+	"modbus_motor":	{
+		"note":	"modbus协议电机",
+		"use":	1,
+		"mqtt":	0,
+		"periodms":	100,
+		"id":	2,
+		"mode":	8,
+		"vel":	1000,
+		"type":	"rtu",
+		"ip":	"192.168.8.1",
+		"port":	502,
+		"device":	"/dev/ttyS3",
+		"baud":	115200,
+		"home_vel1":	800,
+		"home_vel2":	100,
+		"home_acc":	100,
+		"home_dec":	100,
+		"home_mode":	18,
+		"is_set_home":	0,
+		"home":	0,
+		"close_pos":	80,
+		"open_pos":	0,
+		"debug":	0
+	},
+	"mass_sensor":	{
+		"note":	"重力传感器",
+		"use":	0,
+		"mass":	[{
+				"slave_nums":	4,
+				"slave_base_addr":	1,
+				"device":	"/dev/ttyUSB1"
+			}, {
+				"slave_nums":	4,
+				"slave_base_addr":	5,
+				"device":	"/dev/ttyUSB2"
+			}]
+	},
+	"pressure_sensor":	{
+		"note":	"压力传感器",
+		"use":	0,
+		"sensor":	[{
+				"slave_nums":	1,
+				"slave_base_addr":	0,
+				"device":	"/dev/ttyACM0"
+			}]
+	},
+	"bms":	{
+		"note":	"电池信息",
+		"use":	0,
+		"bus_type_note":	"null|can|net2can",
+		"bus_type":	"can",
+		"ip":	"192.168.3.10",
+		"port":	40002,
+		"device":	"can1",
+		"low_battery":	23,
+		"cycle_times":	10
+	},
+	"gamepad":	{
+		"note":	"手柄",
+		"use":	1,
+		"reduced_note":	"扶手上的手柄",
+		"reduced":	{
+			"use":	0
+		}
+	},
+	"mqtt":	{
+		"leg":	{
+			"note":	"APP控制轮腿",
+			"use":	0,
+			"debug":	0
+		},
+		"navigation":	{
+			"note":	"导航控制轮腿",
+			"use":	0,
+			"debug_note":	"1: vel imu, 2: base op, 3: bms, 4: base state",
+			"debug":	2,
+			"io_pin":	6
+		},
+		"app":	{
+			"note":	"APP控制轮腿",
+			"use":	1,
+			"debug":	1
+		},
+		"bci":	{
+			"note":	"脑机控制轮腿",
+			"use":	0,
+			"debug":	0
+		},
+		"edu":	{
+			"note":	"APP控制教育机器人底盘",
+			"use":	0,
+			"debug":	0
+		}
+	},
+	"io_ctrl_motor":	{
+		"note":	"IO控制电机",
+		"use":	0,
+		"active_low":	0,
+		"pin_open":	4,
+		"pin_close":	5,
+		"delay":	0,
+		"debug":	0
+	}
+}

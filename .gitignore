@@ -73,3 +73,23 @@ tests/
 # TacSL sensor
 **/tactile_record/*
 **/gelsight_r15_data/*
+
+
+
+.DS_Store
+/bazel-*
+/.vscode
+/sim/ros2
+/data
+**/install
+**/build
+./log
+**/__pycache__
+**/build_arm64
+**/install_arm64
+**/MODULE.bazel.lock
+**/torch
+*.bak
+third_party/x86/pcl/
+logs
+env

@@ -24,8 +24,14 @@ EXCLUDES=(
   ".venv"
   "env"
   "logs"
+  "outputs"
   "runs"
   "wandb"
+  "third_party"
+  "build"
+  "build_arm64"
+  "install"
+  "install_arm64"
 )
 
 write_tree_with_find() {
@@ -41,8 +47,14 @@ write_tree_with_find() {
       -path "*/.mypy_cache" -prune -o \
       -path "*/.ruff_cache" -prune -o \
       -path "./logs" -prune -o \
+      -path "./outputs" -prune -o \
       -path "./runs" -prune -o \
       -path "./wandb" -prune -o \
+      -path "*/third_party" -prune -o \
+      -path "*/build" -prune -o \
+      -path "*/build_arm64" -prune -o \
+      -path "*/install" -prune -o \
+      -path "*/install_arm64" -prune -o \
       -print \
       | LC_ALL=C sort \
       | awk '
@@ -122,7 +134,7 @@ fi
   echo "# Symbol index raw"
   echo
   echo "- Generated at: ${GENERATED_AT}"
-  echo "- Scope: source/ scripts/"
+  echo "- Scope: source/ scripts/ and Python/C++ deployment entry points"
   echo
   echo "## Python classes and functions"
   echo
@@ -146,6 +158,22 @@ fi
   echo
   echo '```text'
   rg -n --glob '*.py' --glob '*.toml' --glob '*.yaml' --glob '*.urdf' --glob '*.xml' 'resources/|robots/|l5a|urdf|usd|xml|mesh|STL|ArticulationCfg|CARTPOLE_CFG' source scripts resources || true
+  echo '```'
+  echo
+  echo "## Python Sim2Sim symbols"
+  echo
+  echo '```text'
+  rg -n --glob '*.py' '^(class|def) [A-Za-z_][A-Za-z0-9_]*|^    (class|def) [A-Za-z_][A-Za-z0-9_]*|policy_manifest|policy_action_order|compute_torque|run_simulation' \
+    sim2sim_mujoco_py origin_code/sim2sim_mujoco_py || true
+  echo '```'
+  echo
+  echo "## C++ Sim2Sim and Sim2Real symbols"
+  echo
+  echo '```text'
+  rg -n --glob '*.{h,cc}' --glob 'CMakeLists.txt' \
+    'MyController|PhysicsLoop|standMode_(initialize|step|terminate)|RobotModel::|FSM::|RL::|SharedData|InferenceLoop|add_executable|add_library' \
+    origin_code/sim2sim_cpp_and_sim2real/platforms/l5a \
+    origin_code/sim2sim_cpp_and_sim2real/CMakeLists.txt || true
   echo '```'
 } > "${SYMBOL_OUT}"
 

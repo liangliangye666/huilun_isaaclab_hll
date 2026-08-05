@@ -1,0 +1,9 @@
+# set(FILE ${CMAKE_CURRENT_SOURCE_DIR}/bashrc ${CMAKE_CURRENT_SOURCE_DIR}/run_docker.sh
+#             ${CMAKE_CURRENT_SOURCE_DIR}/bashrc_arm64v8 ${CMAKE_CURRENT_SOURCE_DIR}/arm64v8_run_docker.sh)
+
+# install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+#         DESTINATION .)
+install(FILES bashrc bashrc_arm64v8
+        DESTINATION scripts)
+install(PROGRAMS run_docker.sh set_env.sh arm64v8_run_docker.sh
+        DESTINATION scripts)

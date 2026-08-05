@@ -1,0 +1,51 @@
+#version:20260410
+control:
+  # PD控制器参数:
+  pd_controller:
+
+    kp: [42.0, 42.0, 42.0, 0.0, 42.0, 42.0, 42.0, 0.0]
+    kd: [2.5, 2.5, 2.5, 0.8, 2.5, 2.5, 2.5, 0.8]
+
+  pos_fb_controller:
+    kp: [42.0, 42.0, 42.0, 0.0, 42.0, 42.0, 42.0, 0.0]
+    kd: [2.5, 2.5, 2.5, 0.8, 2.5, 2.5, 2.5, 0.8]
+    # kp: [200.0, 200.0, 250.0, 0.0, 200.0, 200.0, 250.0, 0.0]
+    # kd: [2, 2, 2, 1.5, 2, 2, 2, 1.5]
+
+  action_scales:
+    # 位置动作的缩放系数
+    pos: 0.25
+    # 速度动作的缩放系数
+    vel: 0.5
+
+  decimation: 10
+
+  EDamping:
+    edamp_hip: 2.0
+    edamp_knee: 2.0
+    edamp_wheel: 2.0
+
+obs_scales:
+  lin_vel: 2.0
+  lin_vel_y: 2.0
+  ang_vel: 0.25
+  dof_pos: 1.0
+  dof_vel: 0.05
+  quat: 1.0
+  height_measurements: 5.0
+
+clip_obs: 100.0
+clip_actions: 100.0
+
+# deg
+default_pos: [0.0523599, 0.261799, -0.563811, 0.0, -0.0523599, 0.261799, -0.563811, 0.0]
+
+#速度与角速度补偿
+lin_vel_x_com: -0.0
+lin_vel_y_com: -0.0
+omega_com: 0.0
+
+model:
+  estimator: "estimator.pt"
+  controller: "policy_1.pt"
+  scan_encoder: "724-02-60000-scan_hist_encoder_jit.pt"

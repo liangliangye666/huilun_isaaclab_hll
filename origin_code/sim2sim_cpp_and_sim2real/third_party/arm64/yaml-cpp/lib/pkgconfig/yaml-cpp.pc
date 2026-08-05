@@ -1,0 +1,11 @@
+prefix=/home/tlbot/code/gac-robotics/third_party/sources/yaml-cpp/install
+exec_prefix=${prefix}
+includedir=/home/tlbot/code/gac-robotics/third_party/sources/yaml-cpp/install/include
+libdir=/home/tlbot/code/gac-robotics/third_party/sources/yaml-cpp/install/lib
+
+Name: Yaml-cpp
+Description: A YAML parser and emitter for C++
+Version: 
+Requires:
+Libs: -L${libdir} -lyaml-cpp
+Cflags: -I${includedir}

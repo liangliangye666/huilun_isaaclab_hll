@@ -1,0 +1,15 @@
+{
+    "master": [
+        {
+            "idx": 0,
+            "appTimePeriod": 5000000,
+            "refClockSyncCycles": 1,
+            "slave": [
+                {
+                    "idx": [0, 1],
+                    "type": "ENCOS"
+                }
+            ]
+        }
+    ]
+}

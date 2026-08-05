@@ -1,0 +1,129 @@
+{
+    "robot": [
+        {
+            "mode": "default",
+            "auto": true,
+            "unit_note0": "position: rad, velocity: rad/s, acceleration: rad/s2, current: mA, torque: mNm",
+            "unit_note": "deg|degree|rad|radian",
+            "unit": "rad",
+            "joint": [
+                {
+                    "idx": 0,
+                    "name": "encos",
+                    "can": [
+                        {
+                            "idx": 0,
+                            "motor": [
+                                {
+                                    "idx": [0],
+                                    "can_id": [1],
+                                    "name": ["hip_roll_left"],
+                                    "home_offset": 0,
+                                    "scale": [-1],
+                                    "velocity": 0.3414,
+                                    "max_velocity": 16.441,
+                                    "acceleration": 20,
+                                    "deceleration": 20,
+                                    "jerk": 1000,
+                                    "algorithm_type": "null",
+                                    "operation_mode": "pp",
+                                    "init_velocity": 1.0,
+                                    "init_position": [0.0523599],
+                                    "is_init_position": 1,
+                                    "motor_rated_current": 60000,
+                                    "motor_rated_torque": 90000,
+                                    "response_type_note": "1: pos vel, 2: pos, 3: vel",
+                                    "response_type": 1
+                                }
+                            ]
+                        },
+                        {
+                            "idx": 1,
+                            "motor": [
+                                {
+                                    "idx": [0, 1, 2],
+                                    "can_id": [2, 3, 4],
+                                    "name": ["hip_pitch_left", "knee_pitch_left", "wheel_pitch_left"],
+                                    "home_offset": 0,
+                                    "scale": [1, -1, -1],
+                                    "velocity": 0.3414,
+                                    "max_velocity": 16.441,
+                                    "acceleration": 20,
+                                    "deceleration": 20,
+                                    "jerk": 1000,
+                                    "algorithm_type": "null",
+                                    "operation_mode": ["pp", "pp", "pv"],
+                                    "init_velocity": 1.0,
+                                    "init_position": [0.261799, -0.563811, 0],
+                                    "is_init_position": [1, 1, 0],
+                                    "motor_rated_current": [60000, 70000, 60000],
+                                    "motor_rated_torque": [90000, 130000, 60000],
+                                    "response_type_note": "1: pos vel, 2: pos, 3: vel",
+                                    "response_type": 1
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "idx": 1,
+                    "name": "encos",
+                    "can": [
+                        {
+                            "idx": 0,
+                            "motor": [
+                                {
+                                    "idx": [0],
+                                    "can_id": [5],
+                                    "name": ["hip_roll_right"],
+                                    "home_offset": 0,
+                                    "scale": [-1],
+                                    "velocity": 0.3414,
+                                    "max_velocity": 16.441,
+                                    "acceleration": 20,
+                                    "deceleration": 20,
+                                    "jerk": 1000,
+                                    "algorithm_type": "null",
+                                    "operation_mode": "pp",
+                                    "init_velocity": 1.0,
+                                    "init_position": [-0.0523599],
+                                    "is_init_position": 1,
+                                    "motor_rated_current": 60000,
+                                    "motor_rated_torque": 90000,
+                                    "response_type_note": "1: pos vel, 2: pos, 3: vel",
+                                    "response_type": 1
+                                }
+                            ]
+                        },
+                        {
+                            "idx": 1,
+                            "motor": [
+                                {
+                                    "idx": [0, 1, 2],
+                                    "can_id": [6, 7, 8],
+                                    "name": ["hip_pitch_right", "knee_pitch_right", "wheel_pitch_right"],
+                                    "home_offset": 0,
+                                    "scale": [-1, 1, 1],
+                                    "velocity": 0.3414,
+                                    "max_velocity": 16.441,
+                                    "acceleration": 20,
+                                    "deceleration": 20,
+                                    "jerk": 1000,
+                                    "algorithm_type": "null",
+                                    "operation_mode": ["pp", "pp", "pv"],
+                                    "init_velocity": 1.0,
+                                    "init_position": [0.261799, -0.563811, 0],
+                                    "is_init_position": [1, 1, 0],
+                                    "motor_rated_current": [60000, 70000, 60000],
+                                    "motor_rated_torque": [90000, 130000, 60000],
+                                    "response_type_note": "1: pos vel, 2: pos, 3: vel",
+                                    "response_type": 1
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

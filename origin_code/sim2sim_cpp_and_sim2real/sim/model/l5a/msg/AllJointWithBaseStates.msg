@@ -1,0 +1,14 @@
+float64 x
+float64 y
+float64 z
+float64 roll
+float64 pitch
+float64 yaw
+float64 left_hip_pitch_joint
+float64 left_hip_roll_joint
+float64 left_knee_joint
+float64 left_wheel_joint
+float64 right_hip_pitch_joint
+float64 right_hip_roll_joint
+float64 right_knee_joint
+float64 right_wheel_joint

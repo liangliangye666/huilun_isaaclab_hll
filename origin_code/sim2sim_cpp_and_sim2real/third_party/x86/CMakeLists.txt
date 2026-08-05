@@ -1,0 +1,7 @@
+add_subdirectory(mujoco)
+add_subdirectory(Eigen3)
+add_subdirectory(glog)
+add_subdirectory(pinocchio)
+add_subdirectory(qpOASES)
+add_subdirectory(rbdl)
+add_subdirectory(yaml-cpp)

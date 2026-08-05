@@ -1,0 +1,33 @@
+cmake_minimum_required(VERSION 3.16)
+project(gac_robotics)
+set(CMAKE_GENERATOR "Unix Makefiles")
+
+if(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
+    # set(ARCH "ARM64")
+    option(SIM_ENABLE "Enable simulation features (e.g., Mujoco)" OFF)
+    option(PHYSICS_ENABLE "Enable physics features (e.g., Mujoco)" ON)
+    set(CMAKE_INSTALL_PREFIX ${PROJECT_SOURCE_DIR}/install_arm64)
+elseif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
+    # set(ARCH "x86")
+    option(SIM_ENABLE "Enable simulation features (e.g., Mujoco)" ON)
+    option(PHYSICS_ENABLE "Enable physics features (e.g., Mujoco)" OFF)
+    set(CMAKE_INSTALL_PREFIX ${PROJECT_SOURCE_DIR}/install)
+endif()
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(BUILD_TESTING OFF)
+set(CMAKE_BUILD_TYPE Release)
+# set(CMAKE_BUILD_TYPE Debug)
+set(BUILD_SHARED_LIBS ON)
+
+add_compile_options(-Wno-conversion -Wno-format-truncation)
+
+add_subdirectory(third_party)
+add_subdirectory(sim)
+add_subdirectory(platforms)
+add_subdirectory(scripts)
+add_subdirectory(tools)
+add_subdirectory(math)
+
+# ament_package()

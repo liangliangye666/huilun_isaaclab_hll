@@ -1,0 +1,710 @@
+# Symbol index raw
+
+- Generated at: 2026-08-05T23:00:27+08:00
+- Scope: source/ scripts/ and Python/C++ deployment entry points
+
+## Python classes and functions
+
+```text
+scripts/zero_agent.py:41:def main():
+scripts/list_envs.py:40:def main():
+scripts/rsl_rl/cli_args.py:16:def add_rsl_rl_args(parser: argparse.ArgumentParser):
+scripts/rsl_rl/cli_args.py:42:def parse_rsl_rl_cfg(task_name: str, args_cli: argparse.Namespace) -> RslRlBaseRunnerCfg:
+scripts/rsl_rl/cli_args.py:60:def update_rsl_rl_cfg(agent_cfg: RslRlBaseRunnerCfg, args_cli: argparse.Namespace):
+scripts/rsl_rl/play.py:131:def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agent_cfg: RslRlBaseRunnerCfg):
+scripts/rsl_rl/play.py:337:def _debug_key(name: str) -> str:
+scripts/rsl_rl/play.py:342:def _json_safe(value):
+scripts/rsl_rl/play.py:362:class PlayDebugRecorder:
+scripts/rsl_rl/play.py:369:    def __init__(
+scripts/rsl_rl/play.py:408:    def _resolve_robot_joints(self) -> tuple[list[int] | slice, list[str]]:
+scripts/rsl_rl/play.py:421:    def _resolve_wheel_bodies(self) -> tuple[list[int] | slice, list[str]]:
+scripts/rsl_rl/play.py:430:    def _select(self, value):
+scripts/rsl_rl/play.py:446:    def _append(self, key: str, value) -> None:
+scripts/rsl_rl/play.py:452:    def _append_obs(self, prefix: str, obs) -> None:
+scripts/rsl_rl/play.py:460:    def _append_action_terms(self) -> None:
+scripts/rsl_rl/play.py:471:    def _append_command_terms(self) -> None:
+scripts/rsl_rl/play.py:478:    def _append_reward_terms(self) -> None:
+scripts/rsl_rl/play.py:488:    def _append_termination_terms(self) -> None:
+scripts/rsl_rl/play.py:498:    def _append_robot_state(self) -> None:
+scripts/rsl_rl/play.py:530:    def _append_contact_state(self) -> None:
+scripts/rsl_rl/play.py:537:    def _append_policy_diagnostics(self, obs) -> None:
+scripts/rsl_rl/play.py:546:    def record(self, step: int, pre_obs, policy_actions, post_obs, rewards, dones, extras: dict) -> None:
+scripts/rsl_rl/play.py:569:    def _write_extras(self, step: int, extras: dict) -> None:
+scripts/rsl_rl/play.py:573:    def _write_manifest(self, resume_path: str, args_cli: argparse.Namespace, original_argv: list[str]) -> None:
+scripts/rsl_rl/play.py:636:    def close(self) -> None:
+scripts/rsl_rl/train.py:116:def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agent_cfg: RslRlBaseRunnerCfg):
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_actor_critic.py:32:class VelocityEstimatorActorCritic(ActorCritic):
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_actor_critic.py:55:    def __init__(
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_actor_critic.py:146:    def _validate_observation_contract(
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_actor_critic.py:202:    def _validate_deployment_metadata_contract(self) -> None:
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_actor_critic.py:297:    def estimate_base_lin_vel(self, obs: TensorDict, detach: bool = False) -> torch.Tensor:
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_actor_critic.py:312:    def get_estimator_target(self, obs: TensorDict) -> torch.Tensor:
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_actor_critic.py:334:    def get_actor_obs(self, obs: TensorDict) -> torch.Tensor:
+scripts/random_agent.py:41:def main():
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_exporter.py:22:def _sha256_file(path: str | os.PathLike[str]) -> str:
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_exporter.py:30:class _ActorOnly(nn.Module):
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_exporter.py:33:    def __init__(self, policy: VelocityEstimatorActorCritic) -> None:
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_exporter.py:39:    def forward(
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_exporter.py:52:class _VelocityEstimatorOnly(nn.Module):
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_exporter.py:55:    def __init__(self, policy: VelocityEstimatorActorCritic) -> None:
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_exporter.py:59:    def forward(self, observation_history: torch.Tensor) -> torch.Tensor:
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_exporter.py:63:def _tensor_signature(name: str, shape: list[str | int]) -> dict[str, Any]:
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_exporter.py:67:def export_velocity_estimator_policy(
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/velocity_estimator_cfg.py:16:class VelocityEstimatorActorCriticCfg(RslRlPpoActorCriticCfg):
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/velocity_estimator_cfg.py:45:class VelocityEstimatorPPOCfg(RslRlPpoAlgorithmCfg):    # 声明 Encoder 训练超参数
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_ppo.py:27:class _EstimatorRolloutStorage(RolloutStorage):
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_ppo.py:37:    def clear(self) -> None:
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_ppo.py:43:class VelocityEstimatorPPO(PPO):
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_ppo.py:55:    def __init__(
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_ppo.py:105:    def init_storage(
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_ppo.py:130:    def update(self) -> dict[str, float]:
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_ppo.py:186:    def _reduce_estimator_gradients(self) -> None:
+source/huilun_isaaclab/huilun_isaaclab/ui_extension_example.py:16:def some_public_function(x: int):
+source/huilun_isaaclab/huilun_isaaclab/ui_extension_example.py:22:class ExampleExtension(omni.ext.IExt):
+source/huilun_isaaclab/huilun_isaaclab/ui_extension_example.py:25:    def on_startup(self, ext_id):
+source/huilun_isaaclab/huilun_isaaclab/ui_extension_example.py:50:    def on_shutdown(self):
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_runner.py:27:def _metadata_values_equal(current: object, checkpoint: object) -> bool:
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_runner.py:36:def _short_metadata_value(value: object) -> str:
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_runner.py:42:def _collect_metadata_diffs(current: object, checkpoint: object, path: str = "deployment_metadata") -> list[str]:
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_runner.py:69:def _append_float_mismatch(
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_runner.py:85:class VelocityEstimatorOnPolicyRunner(OnPolicyRunner):
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_runner.py:92:    def _construct_algorithm(self, obs: TensorDict) -> VelocityEstimatorPPO:
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_runner.py:149:    def _validate_policy_metadata_against_runtime(self, policy: VelocityEstimatorActorCritic) -> None:
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_runner.py:236:    def save(self, path: str, infos: dict | None = None) -> None:
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_runner.py:275:    def load(self, path: str, load_optimizer: bool = True, map_location: str | None = None) -> dict | None:
+source/huilun_isaaclab/huilun_isaaclab/actuators/delayed_implicit.py:22:class DelayedImplicitActuator(ImplicitActuator):
+source/huilun_isaaclab/huilun_isaaclab/actuators/delayed_implicit.py:32:    def __init__(self, cfg: DelayedImplicitActuatorCfg, *args, **kwargs):
+source/huilun_isaaclab/huilun_isaaclab/actuators/delayed_implicit.py:40:    def reset(self, env_ids: Sequence[int] | slice | None) -> None:
+source/huilun_isaaclab/huilun_isaaclab/actuators/delayed_implicit.py:69:    def compute(
+source/huilun_isaaclab/huilun_isaaclab/actuators/delayed_implicit.py:100:class DelayedImplicitActuatorCfg(ImplicitActuatorCfg):
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/agents/rsl_rl_ppo_cfg.py:26:class L5AWFPPORunnerCfg(RslRlOnPolicyRunnerCfg):
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/rewards.py:28:def _body_pos_b(asset: Articulation, body_ids: list[int] | slice) -> torch.Tensor:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/rewards.py:47:def base_height_l1(
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/rewards.py:70:def leg_y_symmetry_exp(env: ManagerBasedRLEnv, std: float, asset_cfg: SceneEntityCfg) -> torch.Tensor:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/rewards.py:85:def same_wheel_x_position_l1(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) -> torch.Tensor:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/rewards.py:95:def same_wheel_z_position_l2(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) -> torch.Tensor:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/rewards.py:105:def wheel_distance_range_l1(
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/rewards.py:128:def wheel_distance_alignment_exp(
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/rewards.py:193:def stand_still_l1(
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/rewards.py:232:def base_projection_at_wheel_midpoint_exp(
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/rewards.py:253:def joint_power_l1(
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/rewards.py:268:def joint_deviation_from_default_l2(
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/rewards.py:289:def action_smooth_l2(env: ManagerBasedRLEnv) -> torch.Tensor:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/terminations.py:20:def action_out_of_limits(env: ManagerBasedRLEnv, threshold: float) -> torch.Tensor:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:66:class L5AWFSceneCfg(InteractiveSceneCfg):
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:109:class CommandsCfg:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:138:class ActionsCfg:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:185:class ObservationsCfg:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:208:    class PolicyCfg(ObsGroup):
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:242:    class HistoryCfg(ObsGroup):
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:282:    class CommandsObsCfg(ObsGroup):
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:295:    class EstimatorTargetCfg(ObsGroup):
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:305:    class CriticCfg(ObsGroup):
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:400:class EventCfg:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:591:class RewardsCfg:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:733:class TerminationsCfg:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:764:class CurriculumCfg:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:775:class L5AWFFlatEnvCfg(ManagerBasedRLEnvCfg):
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:796:    def __post_init__(self) -> None:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:824:    def build_deployment_export_metadata(self) -> dict[str, Any]:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:830:class L5AWFFlatEnvCfg_PLAY(L5AWFFlatEnvCfg):
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:839:    def __post_init__(self) -> None:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:888:def _metadata_scale(term: ObsTerm) -> float:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:894:def _float_range(values: tuple[float, float] | list[float]) -> list[float]:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:899:def _seconds(value: float) -> float:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:904:def _assert_l5a_wf_deployment_metadata(metadata: dict[str, Any]) -> None:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:928:def build_l5a_wf_deployment_metadata() -> dict[str, Any]:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:1034:def _resolve_joint_parameter(parameter: float | dict[str, float], joint_name: str) -> float:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:1044:def _sha256_path(path) -> str:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:1052:def build_l5a_wf_export_metadata() -> dict[str, Any]:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/actions.py:29:class RandomizedDefaultJointPositionAction(JointPositionAction):
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/actions.py:45:    def __init__(self, cfg: RandomizedDefaultJointPositionActionCfg, env: ManagerBasedEnv):
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/actions.py:69:class RandomizedDefaultJointPositionActionCfg(JointPositionActionCfg):
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/observations.py:29:def base_ang_vel_with_imu_bias(
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/observations.py:50:def projected_gravity_with_imu_bias(
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/observations.py:71:def privileged_joint_torque(
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/observations.py:84:def privileged_joint_acc(
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/observations.py:97:def body_lin_vel_w(
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/observations.py:110:def current_body_mass(
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/observations.py:131:def body_contact_force_w(
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/events.py:27:def randomize_imu_mounting_bias(
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/events.py:62:def randomize_joint_effort_limits(
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/events.py:126:def scale_current_rigid_body_mass_inertia(
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/events.py:177:def randomize_rigid_body_coms(
+```
+
+## Isaac Lab config decorators and config classes
+
+```text
+scripts/rsl_rl/cli_args.py:13:    from isaaclab_rl.rsl_rl import RslRlBaseRunnerCfg
+scripts/rsl_rl/cli_args.py:42:def parse_rsl_rl_cfg(task_name: str, args_cli: argparse.Namespace) -> RslRlBaseRunnerCfg:
+scripts/rsl_rl/cli_args.py:55:    rslrl_cfg: RslRlBaseRunnerCfg = load_cfg_from_registry(task_name, "rsl_rl_cfg_entry_point")
+scripts/rsl_rl/cli_args.py:60:def update_rsl_rl_cfg(agent_cfg: RslRlBaseRunnerCfg, args_cli: argparse.Namespace):
+scripts/rsl_rl/play.py:107:    DirectMARLEnvCfg,
+scripts/rsl_rl/play.py:108:    DirectRLEnvCfg,
+scripts/rsl_rl/play.py:109:    ManagerBasedRLEnvCfg,
+scripts/rsl_rl/play.py:116:from isaaclab_rl.rsl_rl import RslRlBaseRunnerCfg, RslRlVecEnvWrapper, export_policy_as_jit, export_policy_as_onnx
+scripts/rsl_rl/play.py:131:def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agent_cfg: RslRlBaseRunnerCfg):
+scripts/rsl_rl/play.py:146:    agent_cfg: RslRlBaseRunnerCfg = cli_args.update_rsl_rl_cfg(agent_cfg, args_cli)
+scripts/rsl_rl/play.py:220:    env = RslRlVecEnvWrapper(env, clip_actions=agent_cfg.clip_actions)
+scripts/rsl_rl/play.py:371:        env: RslRlVecEnvWrapper,
+scripts/rsl_rl/train.py:89:    DirectMARLEnvCfg,
+scripts/rsl_rl/train.py:90:    DirectRLEnvCfg,
+scripts/rsl_rl/train.py:91:    ManagerBasedRLEnvCfg,
+scripts/rsl_rl/train.py:97:from isaaclab_rl.rsl_rl import RslRlBaseRunnerCfg, RslRlVecEnvWrapper
+scripts/rsl_rl/train.py:116:def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agent_cfg: RslRlBaseRunnerCfg):
+scripts/rsl_rl/train.py:169:    if isinstance(env_cfg, ManagerBasedRLEnvCfg):
+scripts/rsl_rl/train.py:205:    env = RslRlVecEnvWrapper(env, clip_actions=agent_cfg.clip_actions)
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/velocity_estimator_cfg.py:12:from isaaclab_rl.rsl_rl import RslRlPpoActorCriticCfg, RslRlPpoAlgorithmCfg
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/velocity_estimator_cfg.py:15:@configclass
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/velocity_estimator_cfg.py:16:class VelocityEstimatorActorCriticCfg(RslRlPpoActorCriticCfg):
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/velocity_estimator_cfg.py:44:@configclass
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/velocity_estimator_cfg.py:45:class VelocityEstimatorPPOCfg(RslRlPpoAlgorithmCfg):    # 声明 Encoder 训练超参数
+source/huilun_isaaclab/huilun_isaaclab/assets/robots/l5a.py:15:from isaaclab.assets import ArticulationCfg
+source/huilun_isaaclab/huilun_isaaclab/assets/robots/l5a.py:90:L5A_CFG = ArticulationCfg(
+source/huilun_isaaclab/huilun_isaaclab/assets/robots/l5a.py:109:    init_state=ArticulationCfg.InitialStateCfg(
+source/huilun_isaaclab/huilun_isaaclab/actuators/delayed_implicit.py:99:@configclass
+source/huilun_isaaclab/huilun_isaaclab/actuators/delayed_implicit.py:100:class DelayedImplicitActuatorCfg(ImplicitActuatorCfg):
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/agents/rsl_rl_ppo_cfg.py:18:from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/agents/rsl_rl_ppo_cfg.py:25:@configclass
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/agents/rsl_rl_ppo_cfg.py:26:class L5AWFPPORunnerCfg(RslRlOnPolicyRunnerCfg):
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:26:from isaaclab.assets import ArticulationCfg, AssetBaseCfg
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:27:from isaaclab.envs import ManagerBasedRLEnvCfg
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:34:from isaaclab.scene import InteractiveSceneCfg
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:65:@configclass
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:66:class L5AWFSceneCfg(InteractiveSceneCfg):
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:93:    robot: ArticulationCfg = L5A_WF_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:102:    sky_light = AssetBaseCfg(
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:108:@configclass
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:109:class CommandsCfg:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:137:@configclass
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:138:class ActionsCfg:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:184:@configclass
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:185:class ObservationsCfg:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:207:    @configclass
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:241:    @configclass
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:281:    @configclass
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:294:    @configclass
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:304:    @configclass
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:399:@configclass
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:400:class EventCfg:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:590:@configclass
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:591:class RewardsCfg:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:732:@configclass
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:733:class TerminationsCfg:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:763:@configclass
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:764:class CurriculumCfg:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:774:@configclass
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:775:class L5AWFFlatEnvCfg(ManagerBasedRLEnvCfg):
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:829:@configclass
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:830:class L5AWFFlatEnvCfg_PLAY(L5AWFFlatEnvCfg):
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/rewards.py:70:def leg_y_symmetry_exp(env: ManagerBasedRLEnv, std: float, asset_cfg: SceneEntityCfg) -> torch.Tensor:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/rewards.py:85:def same_wheel_x_position_l1(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) -> torch.Tensor:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/rewards.py:95:def same_wheel_z_position_l2(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) -> torch.Tensor:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/terminations.py:24:    动作向量，用于尽早截断策略输出幅值爆炸的异常回合。RslRlVecEnvWrapper 会先
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/actions.py:68:@configclass
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/actions.py:69:class RandomizedDefaultJointPositionActionCfg(JointPositionActionCfg):
+```
+
+## Manager, MDP, and RL terms
+
+```text
+scripts/zero_agent.py:12:from isaaclab.app import AppLauncher
+scripts/zero_agent.py:21:# append AppLauncher cli args
+scripts/zero_agent.py:22:AppLauncher.add_app_launcher_args(parser)
+scripts/zero_agent.py:27:app_launcher = AppLauncher(args_cli)
+scripts/zero_agent.py:48:    env = gym.make(args_cli.task, cfg=env_cfg)
+scripts/list_envs.py:19:from isaaclab.app import AppLauncher
+scripts/list_envs.py:28:app_launcher = AppLauncher(headless=True)
+scripts/rsl_rl/play.py:13:from isaaclab.app import AppLauncher
+scripts/rsl_rl/play.py:69:# append AppLauncher cli args
+scripts/rsl_rl/play.py:70:AppLauncher.add_app_launcher_args(parser)
+scripts/rsl_rl/play.py:82:app_launcher = AppLauncher(args_cli)
+scripts/rsl_rl/play.py:99:    VelocityEstimatorOnPolicyRunner,
+scripts/rsl_rl/play.py:103:from rsl_rl.runners import DistillationRunner, OnPolicyRunner
+scripts/rsl_rl/play.py:116:from isaaclab_rl.rsl_rl import RslRlBaseRunnerCfg, RslRlVecEnvWrapper, export_policy_as_jit, export_policy_as_onnx
+scripts/rsl_rl/play.py:121:from isaaclab_tasks.utils.hydra import hydra_task_config
+scripts/rsl_rl/play.py:130:@hydra_task_config(args_cli.task, args_cli.agent)
+scripts/rsl_rl/play.py:201:    env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
+scripts/rsl_rl/play.py:220:    env = RslRlVecEnvWrapper(env, clip_actions=agent_cfg.clip_actions)
+scripts/rsl_rl/play.py:224:    if agent_cfg.class_name == "OnPolicyRunner":
+scripts/rsl_rl/play.py:225:        runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
+scripts/rsl_rl/play.py:226:    elif agent_cfg.class_name == "VelocityEstimatorOnPolicyRunner":
+scripts/rsl_rl/play.py:227:        runner = VelocityEstimatorOnPolicyRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
+scripts/rsl_rl/play.py:228:    elif agent_cfg.class_name == "DistillationRunner":
+scripts/rsl_rl/play.py:229:        runner = DistillationRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
+scripts/rsl_rl/play.py:371:        env: RslRlVecEnvWrapper,
+scripts/rsl_rl/train.py:13:from isaaclab.app import AppLauncher
+scripts/rsl_rl/train.py:39:# append AppLauncher cli args
+scripts/rsl_rl/train.py:40:AppLauncher.add_app_launcher_args(parser)
+scripts/rsl_rl/train.py:51:app_launcher = AppLauncher(args_cli)
+scripts/rsl_rl/train.py:85:from rsl_rl.runners import DistillationRunner, OnPolicyRunner
+scripts/rsl_rl/train.py:97:from isaaclab_rl.rsl_rl import RslRlBaseRunnerCfg, RslRlVecEnvWrapper
+scripts/rsl_rl/train.py:101:from isaaclab_tasks.utils.hydra import hydra_task_config
+scripts/rsl_rl/train.py:107:from huilun_isaaclab.learning.rsl_rl import VelocityEstimatorOnPolicyRunner
+scripts/rsl_rl/train.py:115:@hydra_task_config(args_cli.task, args_cli.agent)
+scripts/rsl_rl/train.py:180:    env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
+scripts/rsl_rl/train.py:205:    env = RslRlVecEnvWrapper(env, clip_actions=agent_cfg.clip_actions)
+scripts/rsl_rl/train.py:208:    if agent_cfg.class_name == "OnPolicyRunner":
+scripts/rsl_rl/train.py:209:        runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device)
+scripts/rsl_rl/train.py:210:    elif agent_cfg.class_name == "VelocityEstimatorOnPolicyRunner":
+scripts/rsl_rl/train.py:211:        runner = VelocityEstimatorOnPolicyRunner(
+scripts/rsl_rl/train.py:217:    elif agent_cfg.class_name == "DistillationRunner":
+scripts/rsl_rl/train.py:218:        runner = DistillationRunner(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device)
+scripts/random_agent.py:12:from isaaclab.app import AppLauncher
+scripts/random_agent.py:21:# append AppLauncher cli args
+scripts/random_agent.py:22:AppLauncher.add_app_launcher_args(parser)
+scripts/random_agent.py:27:app_launcher = AppLauncher(args_cli)
+scripts/random_agent.py:48:    env = gym.make(args_cli.task, cfg=env_cfg)
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/__init__.py:14:from .estimator_runner import VelocityEstimatorOnPolicyRunner
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/__init__.py:25:    "VelocityEstimatorOnPolicyRunner",
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_runner.py:6:标准 :class:`rsl_rl.runners.OnPolicyRunner` 负责环境交互、rollout 收集和日志；本模块只
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_runner.py:20:from rsl_rl.runners import OnPolicyRunner
+source/huilun_isaaclab/huilun_isaaclab/learning/rsl_rl/estimator_runner.py:85:class VelocityEstimatorOnPolicyRunner(OnPolicyRunner):
+source/huilun_isaaclab/huilun_isaaclab/assets/robots/l5a.py:64:# 刚体名称用于接触传感器、几何奖励、质量/质心随机化等 SceneEntityCfg 解析。
+source/huilun_isaaclab/huilun_isaaclab/tasks/__init__.py:10:而真正的环境对象要等到训练脚本调用 ``gym.make`` 时才会构造。
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/agents/rsl_rl_ppo_cfg.py:18:from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/agents/rsl_rl_ppo_cfg.py:26:class L5AWFPPORunnerCfg(RslRlOnPolicyRunnerCfg):
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/agents/rsl_rl_ppo_cfg.py:42:    class_name = "VelocityEstimatorOnPolicyRunner"
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:8:``ManagerBasedRLEnv`` 在 ``gym.make()`` 时创建：配置先被解析为 Scene，随后
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:28:from isaaclab.managers import EventTermCfg as EventTerm
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:29:from isaaclab.managers import ObservationGroupCfg as ObsGroup
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:30:from isaaclab.managers import ObservationTermCfg as ObsTerm
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:31:from isaaclab.managers import RewardTermCfg as RewTerm
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:32:from isaaclab.managers import SceneEntityCfg
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:33:from isaaclab.managers import TerminationTermCfg as DoneTerm
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:151:    left_leg_pos = mdp.RandomizedDefaultJointPositionActionCfg(
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:159:    left_wheel_vel = mdp.JointVelocityActionCfg(
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:167:    right_leg_pos = mdp.RandomizedDefaultJointPositionActionCfg(
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:175:    right_wheel_vel = mdp.JointVelocityActionCfg(
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:223:            params={"asset_cfg": SceneEntityCfg("robot", joint_names=LEG_JOINT_NAMES, preserve_order=True)},
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:229:            params={"asset_cfg": SceneEntityCfg("robot", joint_names=WF_POLICY_DOF_NAMES, preserve_order=True)},
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:262:            params={"asset_cfg": SceneEntityCfg("robot", joint_names=LEG_JOINT_NAMES, preserve_order=True)},
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:268:            params={"asset_cfg": SceneEntityCfg("robot", joint_names=WF_POLICY_DOF_NAMES, preserve_order=True)},
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:325:            params={"asset_cfg": SceneEntityCfg("robot", joint_names=LEG_JOINT_NAMES, preserve_order=True)},
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:330:            params={"asset_cfg": SceneEntityCfg("robot", joint_names=WF_POLICY_DOF_NAMES, preserve_order=True)},
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:343:            params={"asset_cfg": SceneEntityCfg("robot", joint_names=WF_POLICY_DOF_NAMES, preserve_order=True)},
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:351:            params={"asset_cfg": SceneEntityCfg("robot", joint_names=WF_POLICY_DOF_NAMES, preserve_order=True)},
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:359:            params={"asset_cfg": SceneEntityCfg("robot", body_names=WHEEL_BODY_NAMES, preserve_order=True)},
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:370:            params={"asset_cfg": SceneEntityCfg("robot", body_names=".*")},
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:379:                "sensor_cfg": SceneEntityCfg(
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:425:            "asset_cfg": SceneEntityCfg("robot", body_names=BASE_BODY_NAME),
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:434:            "asset_cfg": SceneEntityCfg("robot", body_names=LEG_BODY_NAMES + WHEEL_BODY_NAMES),
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:453:            "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:461:            "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:473:            "asset_cfg": SceneEntityCfg("robot", joint_names=WF_POLICY_DOF_NAMES, preserve_order=True),
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:491:            "asset_cfg": SceneEntityCfg("robot", joint_names=WF_POLICY_DOF_NAMES, preserve_order=True),
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:500:                "asset_cfg": SceneEntityCfg("robot"),
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:514:            "asset_cfg": SceneEntityCfg("robot", body_names=BASE_BODY_NAME),
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:526:            "asset_cfg": SceneEntityCfg("robot", body_names=LEG_BODY_NAMES + WHEEL_BODY_NAMES),
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:554:            "asset_cfg": SceneEntityCfg("robot", joint_names=LEG_JOINT_NAMES, preserve_order=True),
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:569:            "asset_cfg": SceneEntityCfg("robot", joint_names=WHEEL_JOINT_NAMES, preserve_order=True),
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:580:            "asset_cfg": SceneEntityCfg("robot"),
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:625:            "asset_cfg": SceneEntityCfg("robot", body_names=WHEEL_BODY_NAMES, preserve_order=True),
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:632:        params={"asset_cfg": SceneEntityCfg("robot", body_names=WHEEL_BODY_NAMES, preserve_order=True)},
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:638:            "asset_cfg": SceneEntityCfg("robot", body_names=WHEEL_BODY_NAMES, preserve_order=True),
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:651:            "wheel_cfg": SceneEntityCfg("robot", body_names=WHEEL_BODY_NAMES, preserve_order=True),
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:691:            "sensor_cfg": SceneEntityCfg(
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:703:        params={"asset_cfg": SceneEntityCfg("robot", joint_names=WF_POLICY_DOF_NAMES, preserve_order=True)},
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:708:        params={"asset_cfg": SceneEntityCfg("robot", joint_names=WF_POLICY_DOF_NAMES, preserve_order=True)},
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:713:        params={"asset_cfg": SceneEntityCfg("robot", joint_names=LEG_JOINT_NAMES, preserve_order=True)},
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:718:        params={"asset_cfg": SceneEntityCfg("robot", joint_names=WF_POLICY_DOF_NAMES, preserve_order=True)},
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:723:        params={"asset_cfg": SceneEntityCfg("robot", joint_names=WHEEL_JOINT_NAMES, preserve_order=True)},
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:728:        params={"asset_cfg": SceneEntityCfg("robot", joint_names=LEG_JOINT_NAMES, preserve_order=True)},
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:745:            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=BASE_BODY_NAME),
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/__init__.py:10:机器人资产；只有训练/播放脚本调用 ``gym.make(task_id, ...)`` 时，字符串形式的
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/terminations.py:24:    动作向量，用于尽早截断策略输出幅值爆炸的异常回合。RslRlVecEnvWrapper 会先
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/events.py:21:from isaaclab.managers import SceneEntityCfg
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/events.py:65:    asset_cfg: SceneEntityCfg,
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/events.py:129:    asset_cfg: SceneEntityCfg,
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/events.py:180:    asset_cfg: SceneEntityCfg,
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/actions.py:16:from isaaclab.envs.mdp.actions import JointPositionAction, JointPositionActionCfg
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/actions.py:43:    cfg: RandomizedDefaultJointPositionActionCfg
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/actions.py:45:    def __init__(self, cfg: RandomizedDefaultJointPositionActionCfg, env: ManagerBasedEnv):
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/actions.py:69:class RandomizedDefaultJointPositionActionCfg(JointPositionActionCfg):
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/rewards.py:9:它究竟是奖励还是惩罚由环境配置中对应 ``RewardTermCfg.weight`` 的正负决定：
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/rewards.py:21:from isaaclab.managers import SceneEntityCfg
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/rewards.py:50:    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/rewards.py:70:def leg_y_symmetry_exp(env: ManagerBasedRLEnv, std: float, asset_cfg: SceneEntityCfg) -> torch.Tensor:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/rewards.py:85:def same_wheel_x_position_l1(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) -> torch.Tensor:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/rewards.py:95:def same_wheel_z_position_l2(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) -> torch.Tensor:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/rewards.py:109:    asset_cfg: SceneEntityCfg,
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/rewards.py:135:    asset_cfg: SceneEntityCfg,
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/rewards.py:198:    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/rewards.py:235:    wheel_cfg: SceneEntityCfg,
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/rewards.py:236:    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/rewards.py:255:    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/rewards.py:270:    asset_cfg: SceneEntityCfg,
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/observations.py:10:``ObservationGroupCfg`` 决定。策略可见项应尽量接近真机可测信号，质量、执行器
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/observations.py:22:from isaaclab.managers import SceneEntityCfg
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/observations.py:31:    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/observations.py:52:    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/observations.py:73:    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/observations.py:86:    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/observations.py:99:    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/observations.py:112:    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/observations.py:119:    ``asset_cfg.body_ids`` 选列，因此输出顺序由 SceneEntityCfg 决定。
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/observations.py:133:    sensor_cfg: SceneEntityCfg,
+```
+
+## Asset and resource references
+
+```text
+resources/robots/l5a/usd/config.yaml:1:asset_path: /mnt/isaacdata/myproject/huilun_isaaclab/resources/robots/l5a/urdf/l5aurdf20260521.urdf
+resources/robots/l5a/usd/config.yaml:2:usd_dir: /mnt/isaacdata/myproject/huilun_isaaclab/resources/robots/l5a/usd
+resources/robots/l5a/usd/config.yaml:3:usd_file_name: l5a20260521.usd
+resources/robots/l5a/usd/config.yaml:4:force_usd_conversion: true
+scripts/rsl_rl/play.py:335:logs/rsl_rl/l5a_wf_flat_play/2026-07-31_12-34-56_model_14999/
+scripts/rsl_rl/train.py:161:        agent_cfg.experiment_name	agent 配置类中定义	    "l5a_wf_flat"
+scripts/rsl_rl/train.py:165:        <mnt/isaacdata/myproject/huilun_isaaclab>/logs/rsl_rl/l5a_wf_flat/2026-07-30_15-30-00/
+resources/robots/l5a/xml/l5aurdf20260521.xml:1:<mujoco model="l5aurdf20260521">
+resources/robots/l5a/xml/l5aurdf20260521.xml:2:  <compiler angle="radian" meshdir="../meshes/"/>
+resources/robots/l5a/xml/l5aurdf20260521.xml:9:      <geom contype="0" conaffinity="0" group="1" type="mesh" rgba="0.9 0.9 0.9 1.0" />
+resources/robots/l5a/xml/l5aurdf20260521.xml:19:    <mesh name="base_link" file="base_link.STL"/>
+resources/robots/l5a/xml/l5aurdf20260521.xml:20:    <mesh name="left_hip_roll_link" file="left_hip_roll_link.STL"/>
+resources/robots/l5a/xml/l5aurdf20260521.xml:21:    <mesh name="left_hip_pitch_link" file="left_hip_pitch_link.STL"/>
+resources/robots/l5a/xml/l5aurdf20260521.xml:22:    <mesh name="left_knee_link" file="left_knee_link.STL"/>
+resources/robots/l5a/xml/l5aurdf20260521.xml:23:    <mesh name="left_wheel_link" file="left_wheel_link.STL"/>
+resources/robots/l5a/xml/l5aurdf20260521.xml:24:    <mesh name="right_hip_roll_link" file="right_hip_roll_link.STL"/>
+resources/robots/l5a/xml/l5aurdf20260521.xml:25:    <mesh name="right_hip_pitch_link" file="right_hip_pitch_link.STL"/>
+resources/robots/l5a/xml/l5aurdf20260521.xml:26:    <mesh name="right_knee_link" file="right_knee_link.STL"/>
+resources/robots/l5a/xml/l5aurdf20260521.xml:27:    <mesh name="right_wheel_link" file="right_wheel_link.STL"/>
+resources/robots/l5a/xml/l5aurdf20260521.xml:52:      <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.8902 0.8902 0.91373 1" mesh="base_link"/>
+resources/robots/l5a/xml/l5aurdf20260521.xml:53:      <geom type="mesh" rgba="0.8902 0.8902 0.91373 1" mesh="base_link"/>
+resources/robots/l5a/xml/l5aurdf20260521.xml:58:        <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.8902 0.8902 0.91373 1" mesh="left_hip_roll_link"/>
+resources/robots/l5a/xml/l5aurdf20260521.xml:59:        <geom type="mesh" rgba="0.8902 0.8902 0.91373 1" mesh="left_hip_roll_link"/>
+resources/robots/l5a/xml/l5aurdf20260521.xml:63:          <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.79216 0.81961 0.93333 1" mesh="left_hip_pitch_link"/>
+resources/robots/l5a/xml/l5aurdf20260521.xml:64:          <geom type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="left_hip_pitch_link"/>
+resources/robots/l5a/xml/l5aurdf20260521.xml:68:            <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.8902 0.8902 0.91373 1" mesh="left_knee_link"/>
+resources/robots/l5a/xml/l5aurdf20260521.xml:69:            <geom type="mesh" rgba="0.8902 0.8902 0.91373 1" mesh="left_knee_link"/>
+resources/robots/l5a/xml/l5aurdf20260521.xml:73:              <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.79216 0.81961 0.93333 1" mesh="left_wheel_link"/>
+resources/robots/l5a/xml/l5aurdf20260521.xml:74:              <geom type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="left_wheel_link"/>
+resources/robots/l5a/xml/l5aurdf20260521.xml:82:        <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="1 1 1 1" mesh="right_hip_roll_link"/>
+resources/robots/l5a/xml/l5aurdf20260521.xml:83:        <geom type="mesh" rgba="1 1 1 1" mesh="right_hip_roll_link"/>
+resources/robots/l5a/xml/l5aurdf20260521.xml:87:          <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.79216 0.81961 0.93333 1" mesh="right_hip_pitch_link"/>
+resources/robots/l5a/xml/l5aurdf20260521.xml:88:          <geom type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="right_hip_pitch_link"/>
+resources/robots/l5a/xml/l5aurdf20260521.xml:92:            <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.8902 0.8902 0.91373 1" mesh="right_knee_link"/>
+resources/robots/l5a/xml/l5aurdf20260521.xml:93:            <geom type="mesh" rgba="0.8902 0.8902 0.91373 1" mesh="right_knee_link"/>
+resources/robots/l5a/xml/l5aurdf20260521.xml:97:              <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.89804 0.91765 0.92941 1" mesh="right_wheel_link"/>
+resources/robots/l5a/xml/l5aurdf20260521.xml:98:              <geom type="mesh" rgba="0.89804 0.91765 0.92941 1" mesh="right_wheel_link"/>
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:1:<?xml version="1.0" encoding="utf-8"?>
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:4:     For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:6:  name="l5aurdf20260521">
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:28:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:29:          filename="package://l5aurdf20260521/meshes/base_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:42:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:43:          filename="package://l5aurdf20260521/meshes/base_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:68:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:69:          filename="package://l5aurdf20260521/meshes/left_hip_roll_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:82:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:83:          filename="package://l5aurdf20260521/meshes/left_hip_roll_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:126:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:127:          filename="package://l5aurdf20260521/meshes/left_hip_pitch_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:140:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:141:          filename="package://l5aurdf20260521/meshes/left_hip_pitch_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:184:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:185:          filename="package://l5aurdf20260521/meshes/left_knee_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:198:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:199:          filename="package://l5aurdf20260521/meshes/left_knee_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:242:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:243:          filename="package://l5aurdf20260521/meshes/left_wheel_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:256:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:257:          filename="package://l5aurdf20260521/meshes/left_wheel_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:300:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:301:          filename="package://l5aurdf20260521/meshes/right_hip_roll_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:314:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:315:          filename="package://l5aurdf20260521/meshes/right_hip_roll_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:358:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:359:          filename="package://l5aurdf20260521/meshes/right_hip_pitch_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:372:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:373:          filename="package://l5aurdf20260521/meshes/right_hip_pitch_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:416:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:417:          filename="package://l5aurdf20260521/meshes/right_knee_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:430:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:431:          filename="package://l5aurdf20260521/meshes/right_knee_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:474:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:475:          filename="package://l5aurdf20260521/meshes/right_wheel_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:488:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521_origin.urdf:489:          filename="package://l5aurdf20260521/meshes/right_wheel_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:1:<?xml version="1.0" encoding="utf-8"?>
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:4:     For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:6:  name="l5aurdf20260521">
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:9:    <compiler meshdir="../meshes" discardvisual="false" balanceinertia="false" />
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:12:<!-- 由urdf生成xml时需打开下面注释，生成完之后进行注释 -->
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:43:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:44:          filename="../meshes/base_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:57:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:58:          filename="../meshes/base_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:83:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:84:          filename="../meshes/left_hip_roll_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:97:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:98:          filename="../meshes/left_hip_roll_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:141:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:142:          filename="../meshes/left_hip_pitch_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:155:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:156:          filename="../meshes/left_hip_pitch_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:199:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:200:          filename="../meshes/left_knee_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:213:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:214:          filename="../meshes/left_knee_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:257:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:258:          filename="../meshes/left_wheel_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:271:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:272:          filename="../meshes/left_wheel_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:315:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:316:          filename="../meshes/right_hip_roll_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:329:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:330:          filename="../meshes/right_hip_roll_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:373:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:374:          filename="../meshes/right_hip_pitch_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:387:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:388:          filename="../meshes/right_hip_pitch_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:431:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:432:          filename="../meshes/right_knee_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:445:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:446:          filename="../meshes/right_knee_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:489:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:490:          filename="../meshes/right_wheel_link.STL" />
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:503:        <mesh
+resources/robots/l5a/urdf/l5aurdf20260521.urdf:504:          filename="../meshes/right_wheel_link.STL" />
+source/huilun_isaaclab/huilun_isaaclab/__init__.py:16:建议接手阅读顺序是：``l5a/__init__.py``（任务入口）→ ``wf_flat_env_cfg.py``
+resources/robots/l5a/package.xml:1:<?xml version="1.0"?>
+resources/robots/l5a/package.xml:2:<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+resources/robots/l5a/package.xml:4:    <name>l5a_msgs</name>
+source/huilun_isaaclab/setup.py:34:# ``find_packages`` 对本项目很重要：它会包含嵌套的 l5a/mdp 和 learning/rsl_rl。
+source/huilun_isaaclab/huilun_isaaclab/assets/robots/l5a.py:15:from isaaclab.assets import ArticulationCfg
+source/huilun_isaaclab/huilun_isaaclab/assets/robots/l5a.py:21:L5A_USD_PATH = PROJECT_ROOT / "resources" / "robots" / "l5a" / "usd" / "l5a20260521.usd"
+source/huilun_isaaclab/huilun_isaaclab/assets/robots/l5a.py:90:L5A_CFG = ArticulationCfg(
+source/huilun_isaaclab/huilun_isaaclab/assets/robots/l5a.py:92:        usd_path=str(L5A_USD_PATH),
+source/huilun_isaaclab/huilun_isaaclab/assets/robots/l5a.py:109:    init_state=ArticulationCfg.InitialStateCfg(
+source/huilun_isaaclab/huilun_isaaclab/assets/robots/l5a.py:183:- 你的 L5A 配置是 [l5a.py](/mnt/isaacdata/myproject/huilun_isaaclab/source/huilun_isaaclab/huilun_isaaclab/assets/l5a.py:102)：`enabled_self_collisions=False`
+source/huilun_isaaclab/huilun_isaaclab/assets/robots/l5a.py:184:- L5A 的 USD 转换配置里也写了 `self_collision: false`，并且 `collider_type: convex_hull`，见 [config.yaml](/mnt/isaacdata/myproject/huilun_isaaclab/resources/robots/l5a/usd/config.yaml:17)
+source/huilun_isaaclab/huilun_isaaclab/assets/robots/l5a.py:185:- L5A 原始 URDF 里每个 link 的 collision 基本直接用了对应 STL mesh，例如 base、hip link 都是 mesh collision，见 [l5aurdf20260521.urdf](/mnt/isaacdata/myproject/huilun_isaaclab/resources/robots/l5a/urdf/l5aurdf20260521.urdf:52)
+source/huilun_isaaclab/huilun_isaaclab/assets/robots/l5a.py:187:- 但 Tron2 的 Xacro 默认 `use_primitive_collision=true`，collision 不是直接用复杂 STL，而是大量用 `collision_box` 这类简化体，见 `robot.urdf.xacro:5` 和 `robot.urdf.xacro:66`
+source/huilun_isaaclab/huilun_isaaclab/assets/robots/l5a.py:191:    SolidWorks 导出的 STL collision 很容易在关节附近、轮腿连接处、左右腿极限姿态下产生轻微重叠。
+source/huilun_isaaclab/huilun_isaaclab/assets/robots/l5a.py:207:    下一步单独做一个 `L5A_RL_COLLISION` 版本资产，把 collision 从 STL/convex hull 改成简化 primitive，并验证初始姿态和随机姿态没有内部接触，再打开自碰撞。
+source/huilun_isaaclab/huilun_isaaclab/tasks/__init__.py:9:``tasks/locomotion/l5a/__init__.py`` 正是在这个阶段执行 ``gym.register``，
+source/huilun_isaaclab/huilun_isaaclab/assets/__init__.py:10:from .robots.l5a import *  # noqa: F401, F403
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/__init__.py:8:本层不创建环境；具体任务由子包（当前为 ``l5a``）注册。保留对 Gymnasium 的
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/agents/rsl_rl_ppo_cfg.py:22:from ..wf_flat_env_cfg import build_l5a_wf_deployment_metadata
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/agents/rsl_rl_ppo_cfg.py:48:    experiment_name = "l5a_wf_flat"
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/agents/rsl_rl_ppo_cfg.py:74:        deployment_metadata=build_l5a_wf_deployment_metadata(),
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:26:from isaaclab.assets import ArticulationCfg, AssetBaseCfg
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:40:from huilun_isaaclab.assets.robots.l5a import (
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:93:    robot: ArticulationCfg = L5A_WF_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:365:        L5A 的做法：质量随机化在每回合开始时（reset_idx 事件中）通过事件系统一次性写入 GPU 缓存 env._l5a_current_body_mass，之后每帧从 GPU 直接读，零 CPU 回读。
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:826:        return build_l5a_wf_export_metadata()
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:904:def _assert_l5a_wf_deployment_metadata(metadata: dict[str, Any]) -> None:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:928:def build_l5a_wf_deployment_metadata() -> dict[str, Any]:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:1030:    _assert_l5a_wf_deployment_metadata(metadata)
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:1052:def build_l5a_wf_export_metadata() -> dict[str, Any]:
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:1055:    This function is intentionally separate from ``build_l5a_wf_deployment_metadata``. The latter
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:1058:    metadata = build_l5a_wf_deployment_metadata()
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/wf_flat_env_cfg.py:1063:    mjcf_path = PROJECT_ROOT / "resources" / "robots" / "l5a" / "xml" / "l5aurdf20260521.xml"
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/observations.py:41:    mounting_bias = getattr(env, "_l5a_imu_mounting_bias", None)
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/observations.py:62:    mounting_bias = getattr(env, "_l5a_imu_mounting_bias", None)
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/observations.py:117:    ``env._l5a_current_body_mass``，避免每个策略步从 PhysX CPU 属性接口回读。
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/observations.py:123:    masses = getattr(env, "_l5a_current_body_mass", None)
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/events.py:47:    if not hasattr(env, "_l5a_imu_mounting_bias"):
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/events.py:50:        env._l5a_imu_mounting_bias = bias
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/events.py:59:    env._l5a_imu_mounting_bias[env_ids] = math_utils.quat_from_euler_xyz(roll, pitch, yaw)
+source/huilun_isaaclab/huilun_isaaclab/tasks/locomotion/l5a/mdp/events.py:174:    env._l5a_current_body_mass = masses.to(asset.device)
+```
+
+## Python Sim2Sim symbols
+
+```text
+origin_code/sim2sim_mujoco_py/sim2sim_l5a.py:46:class cmd:
+origin_code/sim2sim_mujoco_py/sim2sim_l5a.py:54:def get_obs(data):
+origin_code/sim2sim_mujoco_py/sim2sim_l5a.py:78:def pd_control(target_q, default_q, q, kp, target_dq, dq, kd):  # target_q:目标位置增量,default_q:关节默认位置/中立位置
+origin_code/sim2sim_mujoco_py/sim2sim_l5a.py:83:def initialize_qpos(model, data):
+origin_code/sim2sim_mujoco_py/sim2sim_l5a.py:88:def run_mujoco(policy, estimator, cfg):
+origin_code/sim2sim_mujoco_py/sim2sim_l5a.py:244:     └─ manifest_path = model_dir/policy_manifest.json
+origin_code/sim2sim_mujoco_py/sim2sim_l5a.py:251:    manifest_path = os.path.join(model_dir, "policy_manifest.json")
+origin_code/sim2sim_mujoco_py/sim2sim_l5a.py:264:    class Sim2simCfg:
+sim2sim_mujoco_py/sim2sim.py:55:from simulator import RuntimeConfig, run_simulation
+sim2sim_mujoco_py/sim2sim.py:64:# exported 目录必须包含 policy_manifest.json、policy.onnx 和 velocity_estimator.onnx。
+sim2sim_mujoco_py/sim2sim.py:72:# 固定命令的排列必须与 policy_manifest.json 中的 command_order 相同。
+sim2sim_mujoco_py/sim2sim.py:109:def main() -> None:
+sim2sim_mujoco_py/sim2sim.py:125:    summary = run_simulation(runtime)
+sim2sim_mujoco_py/src/control.py:3:Actor 输出的 ``policy_action_order`` 必须与 ``hardware_dof_order`` 完全相同。
+sim2sim_mujoco_py/src/control.py:35:class ActionDelayBuffer:
+sim2sim_mujoco_py/src/control.py:43:    def __init__(
+sim2sim_mujoco_py/src/control.py:57:    def reset(self) -> None:
+sim2sim_mujoco_py/src/control.py:63:    def apply(self, action: np.ndarray) -> np.ndarray:
+sim2sim_mujoco_py/src/control.py:75:class GenericPDController:
+sim2sim_mujoco_py/src/control.py:90:    def __init__(self, deployment: dict[str, Any]) -> None:
+sim2sim_mujoco_py/src/control.py:94:        1. 读取 policy_action_order 和 hardware_dof_order，验证两套列表逐项相同
+sim2sim_mujoco_py/src/control.py:99:        self.joint_order = list(deployment["policy_action_order"])
+sim2sim_mujoco_py/src/control.py:103:            raise DeploymentError("policy_action_order 中存在重复关节名。")
+sim2sim_mujoco_py/src/control.py:105:            raise DeploymentError("hardware_dof_order 必须与 policy_action_order 逐项相同；当前运行时不做关节重排。")
+sim2sim_mujoco_py/src/control.py:160:    def targets(self, action: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+sim2sim_mujoco_py/src/control.py:181:    def compute_torque(
+sim2sim_mujoco_py/src/model.py:3:``policy_manifest.json`` 是训练导出侧和部署运行侧之间的数据契约。本模块只校验
+sim2sim_mujoco_py/src/model.py:41:class DeploymentError(RuntimeError):
+sim2sim_mujoco_py/src/model.py:45:def _required(mapping: dict[str, Any], key: str, location: str) -> Any:
+sim2sim_mujoco_py/src/model.py:48:        raise DeploymentError(f"policy_manifest.json 缺少必需字段：{location}.{key}")
+sim2sim_mujoco_py/src/model.py:52:def _validate_direct_joint_order(deployment: dict[str, Any]) -> None:
+sim2sim_mujoco_py/src/model.py:58:    policy_order = list(_required(deployment, "policy_action_order", "deployment"))
+sim2sim_mujoco_py/src/model.py:61:        raise DeploymentError("policy_action_order 必须是非空且无重复的关节列表。")
+sim2sim_mujoco_py/src/model.py:64:            "policy_action_order 必须与 hardware_dof_order 逐项相同；"
+sim2sim_mujoco_py/src/model.py:88:                f"deployment.{field} 必须与 policy_action_order 逐项相同；实际为 {order}。"
+sim2sim_mujoco_py/src/model.py:99:class DeploymentBundle:
+sim2sim_mujoco_py/src/model.py:111:    def deployment(self) -> dict[str, Any]:
+sim2sim_mujoco_py/src/model.py:115:    def model_config(self, model_name: str) -> dict[str, Any]:
+sim2sim_mujoco_py/src/model.py:120:    def model_path(self, model_name: str) -> Path:
+sim2sim_mujoco_py/src/model.py:135:def load_deployment(model_dir: str | Path, mjcf_path: str | Path) -> DeploymentBundle:
+sim2sim_mujoco_py/src/model.py:139:        model_dir: 训练导出的模型目录路径：包含 ``policy_manifest.json`` 和两个 ONNX 文件（velocity_estimator.onnx 和 policy.onnx）。
+sim2sim_mujoco_py/src/model.py:155:    manifest_path = model_dir / "policy_manifest.json"  # 拼接 Manifest 路径
+sim2sim_mujoco_py/src/model.py:158:        raise DeploymentError(f"找不到 policy_manifest.json：{manifest_path}")
+sim2sim_mujoco_py/src/model.py:162:    # 读取 `policy_manifest.json`
+sim2sim_mujoco_py/src/model.py:169:        raise DeploymentError("policy_manifest.json 顶层必须是 JSON object。")
+sim2sim_mujoco_py/src/model.py:182:def _runtime_shape(shape: list[Any]) -> tuple[int, ...]:
+sim2sim_mujoco_py/src/model.py:194:def _normalized_shape(shape: list[Any]) -> list[Any]:
+sim2sim_mujoco_py/src/model.py:201:def _onnx_type(dtype: str) -> str:
+sim2sim_mujoco_py/src/model.py:208:class SplitOnnxPolicy:
+sim2sim_mujoco_py/src/model.py:217:    def __init__(self, bundle: DeploymentBundle) -> None:
+sim2sim_mujoco_py/src/model.py:299:    def _validate_session(
+sim2sim_mujoco_py/src/model.py:328:    def history_samples(self) -> int:
+sim2sim_mujoco_py/src/model.py:333:    def proprioception_dim(self) -> int:
+sim2sim_mujoco_py/src/model.py:338:    def command_dim(self) -> int:
+sim2sim_mujoco_py/src/model.py:343:    def action_dim(self) -> int:
+sim2sim_mujoco_py/src/model.py:347:    def infer(
+sim2sim_mujoco_py/src/observation.py:40:def normalize_quaternion_wxyz(quaternion: np.ndarray) -> np.ndarray:
+sim2sim_mujoco_py/src/observation.py:55:def projected_gravity_from_quaternion(quaternion_wxyz: np.ndarray) -> np.ndarray:
+sim2sim_mujoco_py/src/observation.py:72:class ObservationHistory:
+sim2sim_mujoco_py/src/observation.py:104:    def __init__(self, length: int, observation_dim: int) -> None:
+sim2sim_mujoco_py/src/observation.py:111:    def reset(self) -> None:
+sim2sim_mujoco_py/src/observation.py:116:    def append(self, observation: np.ndarray) -> None:
+sim2sim_mujoco_py/src/observation.py:133:    def batched(self) -> np.ndarray:
+sim2sim_mujoco_py/src/observation.py:140:class ObservationBuilder:
+sim2sim_mujoco_py/src/observation.py:157:    def __init__(self, deployment: dict[str, Any]) -> None:
+sim2sim_mujoco_py/src/observation.py:159:        self.policy_order = list(deployment["policy_action_order"])
+sim2sim_mujoco_py/src/observation.py:162:            raise DeploymentError("policy_action_order 中存在重复关节名。")
+sim2sim_mujoco_py/src/observation.py:179:    def _indices(self, item: dict[str, Any]) -> np.ndarray:
+sim2sim_mujoco_py/src/observation.py:186:                f"观测项 {item['name']!r} 引用了 policy_action_order 中不存在的关节 {error.args[0]!r}。"
+sim2sim_mujoco_py/src/observation.py:190:    def _scaled(values: np.ndarray, scale: Any, term_name: str) -> np.ndarray:
+sim2sim_mujoco_py/src/observation.py:198:    def build(
+sim2sim_mujoco_py/src/observation.py:209:        ``previous_action`` 必须都采用 ``policy_action_order``。上一动作指上一个
+sim2sim_mujoco_py/src/simulator.py:24:class RuntimeConfig:
+sim2sim_mujoco_py/src/simulator.py:31:        model_dir: 包含 policy_manifest.json 和两个 ONNX 文件的导出目录
+sim2sim_mujoco_py/src/simulator.py:60:class RunSummary:
+sim2sim_mujoco_py/src/simulator.py:81:class KeyboardCommand:
+sim2sim_mujoco_py/src/simulator.py:112:    def __init__(
+sim2sim_mujoco_py/src/simulator.py:147:    def _optional_index(self, name: str) -> int | None:
+sim2sim_mujoco_py/src/simulator.py:151:    def _clamp(self) -> None:
+sim2sim_mujoco_py/src/simulator.py:159:    def value(self) -> np.ndarray:
+sim2sim_mujoco_py/src/simulator.py:164:    def is_paused(self) -> bool:
+sim2sim_mujoco_py/src/simulator.py:169:    def consume_reset(self) -> bool:
+sim2sim_mujoco_py/src/simulator.py:180:    def key_callback(self, keycode: int) -> None:
+sim2sim_mujoco_py/src/simulator.py:236:def _named_id(model: mujoco.MjModel, object_type: Any, name: str) -> int:
+sim2sim_mujoco_py/src/simulator.py:245:class MujocoAdapter:
+sim2sim_mujoco_py/src/simulator.py:258:                Manifest 中的 deployment 字段字典，包含 policy_action_order、hardware_dof_order、hardware_actuator_order、robot_model、physics_period_s 等关键配置
+sim2sim_mujoco_py/src/simulator.py:263:    def __init__(self, bundle: DeploymentBundle) -> None:
+sim2sim_mujoco_py/src/simulator.py:288:        self.joint_order = list(self.deployment["policy_action_order"])
+sim2sim_mujoco_py/src/simulator.py:292:                "policy_action_order 必须与 hardware_dof_order 逐项相同；"
+sim2sim_mujoco_py/src/simulator.py:299:                "hardware_actuator_order 必须与 policy_action_order 逐项相同；"
+sim2sim_mujoco_py/src/simulator.py:347:    def _sensor_data(model: mujoco.MjModel, data: mujoco.MjData, sensor_id: int) -> np.ndarray:
+sim2sim_mujoco_py/src/simulator.py:353:    def reset(self) -> None:
+sim2sim_mujoco_py/src/simulator.py:359:    def joint_state(self) -> tuple[np.ndarray, np.ndarray]:
+sim2sim_mujoco_py/src/simulator.py:365:    def orientation_wxyz(self) -> np.ndarray:
+sim2sim_mujoco_py/src/simulator.py:372:    def angular_velocity(self) -> np.ndarray:
+sim2sim_mujoco_py/src/simulator.py:380:    def base_height(self) -> float:
+sim2sim_mujoco_py/src/simulator.py:384:    def apply_torque(self, torque: np.ndarray) -> None:
+sim2sim_mujoco_py/src/simulator.py:392:    def step(self) -> None:
+sim2sim_mujoco_py/src/simulator.py:400:class Sim2SimRunner:
+sim2sim_mujoco_py/src/simulator.py:419:    def __init__(self, bundle: DeploymentBundle, runtime: RuntimeConfig) -> None:
+sim2sim_mujoco_py/src/simulator.py:437:            raise DeploymentError("ONNX action 维度与 policy_action_order 不一致。")
+sim2sim_mujoco_py/src/simulator.py:441:        action_dim	            ONNX 模型的输出 shape	    len(policy_action_order)（经过 GenericPDController 解析）
+sim2sim_mujoco_py/src/simulator.py:480:    def _observe(self) -> np.ndarray:
+sim2sim_mujoco_py/src/simulator.py:543:    def reset(self) -> None:
+sim2sim_mujoco_py/src/simulator.py:553:    def _record(
+sim2sim_mujoco_py/src/simulator.py:577:    def _save_trace(self) -> None:
+sim2sim_mujoco_py/src/simulator.py:590:    def run(self) -> RunSummary:
+sim2sim_mujoco_py/src/simulator.py:694:                    last_torque = self.controller.compute_torque(delayed_action, q, dq)   # → torque [8]
+sim2sim_mujoco_py/src/simulator.py:747:def run_simulation(runtime: RuntimeConfig) -> RunSummary:
+```
+
+## C++ Sim2Sim and Sim2Real symbols
+
+```text
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/sim.cc:56:void MyController(const mjModel* m, mjData* d) {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/sim.cc:352:void PhysicsLoop(mj::Simulate& sim) {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/sim.cc:452:            MyController(m, d);
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/sim.cc:483:              MyController(m, d);
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/sim.cc:544:  PhysicsLoop(*sim);
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/deploy/standMode.h:96:// extern void standMode_initialize(void);
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/deploy/standMode.h:97:extern void standMode_initialize(standmode_output_t* standmode_output,
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/deploy/standMode.h:99:extern void standMode_terminate(void);
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/deploy/standMode.h:102:extern void standMode_step(standmode_output_t* standmode_output,
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/publisher/CMakeLists.txt:6:add_library(simpublisher SHARED ros_publisher.cc)
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/stand_mode_test.cc:90:  // standMode_initialize();
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/stand_mode_test.cc:110:    standMode_step(&standmode_output, &standmode_input);
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/stand_mode_test.cc:124:  standMode_terminate();
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/stand_mode.cc:36:void standMode_initialize(standmode_output_t* standmode_output, standmode_input_t* standmode_input) {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/stand_mode.cc:118:void standMode_step(standmode_output_t* standmode_output, standmode_input_t* standmode_input) {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/stand_mode.cc:278:void standMode_terminate(void) { return; }
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/CMakeLists.txt:20:    add_library(Torch::Torch INTERFACE IMPORTED)
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/CMakeLists.txt:49:    add_executable(sim_l5a sim.cc)
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/CMakeLists.txt:58:    add_library(stand_mode_lib stand_mode.cc)
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/CMakeLists.txt:67:    add_executable(stand_mode_test stand_mode_test.cc)
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/test/CMakeLists.txt:9:add_executable(yaml_cpp_test yaml_cpp_test.cc)
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/test/CMakeLists.txt:10:add_executable(eigen_test eigen_test.cc)
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/test/CMakeLists.txt:11:add_executable(glog_my_test glog_test.cc)
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/test/CMakeLists.txt:12:add_executable(qpOASES_test qpOASES_test.cc)
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/test/CMakeLists.txt:13:add_executable(pinocchio_test pinocchio_test.cc)
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/test/CMakeLists.txt:14:add_executable(talker publisher_lambda_function.cpp)
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/test/CMakeLists.txt:15:add_executable(listener subscriber_lambda_function.cpp)
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/test/CMakeLists.txt:16:add_executable(thread_test thread_test.cc)
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/test/CMakeLists.txt:17:add_executable(get_initpos get_initpos.cc)
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/test/CMakeLists.txt:49:  add_executable(mujoco_test mujoco_test.cc)
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/test/mujoco_test.cc:280:void PhysicsLoop(mj::Simulate& sim) {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/test/mujoco_test.cc:503:  PhysicsLoop(*sim);
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/rl_single.cc:4:RL::RL(RobotModel& robot_model) {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/rl_single.cc:62:RL::~RL() {}
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/rl_single.cc:64:void RL::InferenceLoop() {}
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/rl_single.cc:66:void RL::Run(RobotModel& robot_model) {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/rl_single.cc:249:void RL::UpdateHistoryBuffer(Eigen::VectorXd& hist_buf, const Eigen::VectorXd& buf, int num_buf) {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/rl_single.cc:257:Eigen::VectorXd RL::CreateEstimatorInput(const Eigen::VectorXd& obs_hist, int num_obs, int num_actions, int hist_len) {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/rl_single.cc:272:void RL::RunEDamp(RobotModel& robot_model) {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/rl_single.cc:287:void RL::LoadParameters() {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/rl_single.cc:321:void RL::WarmUpModels() {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/CMakeLists.txt:1:add_library(fsm SHARED fsm.cc)
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/CMakeLists.txt:2:add_library(robot_model SHARED robot_model.cc)
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/CMakeLists.txt:3:add_library(rl rl.cc)
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/CMakeLists.txt:4:add_library(pd_controller SHARED pd_controller.cc)
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/CMakeLists.txt:5:add_library(joint_vel_est SHARED joint_vel_est.cc)
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/CMakeLists.txt:6:add_library(imu SHARED imu.cc)
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/CMakeLists.txt:7:add_library(kalman_filter SHARED kalman_filter.cc)
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/rl.h:68:  struct SharedData {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/rl.h:89:  SharedData shared_data_;
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/rl.h:92:  void InferenceLoop();
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/rl.cc:4:RL::RL(RobotModel& robot_model) {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/rl.cc:74:  inference_thread_ = std::thread(&RL::InferenceLoop, this);
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/rl.cc:77:RL::~RL() {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/rl.cc:86:void RL::InferenceLoop() {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/rl.cc:167:  std::cout << "InferenceLoop exited\n";
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/rl.cc:170:void RL::Run(RobotModel& robot_model) {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/rl.cc:346:void RL::UpdateHistoryBuffer(Eigen::VectorXd& hist_buf, const Eigen::VectorXd& buf, int num_buf) {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/rl.cc:354:Eigen::VectorXd RL::CreateEstimatorInput(const Eigen::VectorXd& obs_hist, int num_obs, int num_actions, int hist_len) {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/rl.cc:369:void RL::RunEDamp(RobotModel& robot_model) {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/rl.cc:384:void RL::LoadParameters() {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/rl.cc:418:void RL::WarmUpModels() {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/fsm.cc:5:FSM::FSM(RobotModel& robot_model) {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/fsm.cc:19:FSM::~FSM() {}
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/fsm.cc:21:void FSM::Initialize(RobotModel& robot_model) {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/fsm.cc:28:void FSM::Run(RobotModel& robot_model) {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/fsm.cc:65:bool FSM::CheckSafety(RobotModel& robot_model) {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/robot_model.cc:15:RobotModel::RobotModel(std::string urdf_path) {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/robot_model.cc:40:RobotModel::~RobotModel() {}
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/robot_model.cc:42:void RobotModel::Initialize() {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/robot_model.cc:86:void RobotModel::UpdateMujocoJointStates(const mjModel* m, mjData* d) {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/robot_model.cc:160:void RobotModel::UpdateRealJointStates(standmode_output_t* standmode_output, standmode_input_t* standmode_input) {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/robot_model.cc:252:void RobotModel::UpdateModel() {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/robot_model.cc:260:void RobotModel::AddFrames() {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/robot_model.cc:273:void RobotModel::UpdateKinematic() {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/robot_model.cc:294:void RobotModel::UpdateDynamic() {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/robot_model.cc:310:// void RobotModel::UpdateMisc() { fsm_id_ = joystick_->fsm_id(); }
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/robot_model.cc:312:void RobotModel::PublishRobotStates() {
+origin_code/sim2sim_cpp_and_sim2real/platforms/l5a/control/robot_model.cc:339:std::string RobotModel::GetJointString(int index) {
+```

@@ -1,0 +1,88 @@
+  {
+    "initChairX":-0.2193,
+ 
+    "initChairZ":-0.6114,
+ 
+    "MNoiseCov":100,
+
+    "IMU_pitch_offset":0.67,
+ 
+    "PID_balance_P":6.5,
+ 
+    "PID_balance_I":2.6,
+
+    "PID_balance_D":0.3,
+
+    "PID_drive_P":2.5,
+ 
+    "PID_drive_I":0.3,
+ 
+    "PID_drive_D":0,
+
+    "PID_steer_P":30,
+ 
+    "PID_steer_I":0.0,
+ 
+    "PID_steer_D":0.0,
+
+    "PID_roll_P":0.26,
+
+    "PID_roll_I":0.12,
+
+    "PID_roll_D":0.22,
+
+    "PID_pitch_P":0.05,
+
+    "PID_pitch_I":0.01,
+
+    "PID_pitch_D":0.0,
+
+    "PID_chairX_P":0.01,
+
+    "PID_chairX_I":0.0,
+
+    "PID_chairX_D":0.0,
+
+    "PID_chairZ_P":0.2,
+
+    "PID_chairZ_I":0.0,
+
+    "PID_chairZ_D":0.0,
+
+    "V_desire":0.0,
+
+    "W_desire":0.0,
+
+    "log_time":0.0,
+
+    "V_des_max":0.5,
+
+    "W_des_max":0.25,
+
+    "IMU_MNoiseCov":200,
+
+    "cloud_log_timer":0,
+
+    "cloud_log_test":0,
+
+    "cloud_log_addr":"192.168.8.15",
+
+    "cloud_log_debug":0,
+
+	"Para_1":0.01,
+	"Para_2":0.00,
+	"Para_3":0.0,
+	"Para_4":0.01,
+	"Para_5":0.00,
+	"Para_6":0.0,
+	"Para_7":0.006,
+	"Para_8":-0.003,
+	"Para_9":0.18,
+	"Para_10":-0.20,
+	"Para_11":-3.2,
+	"Para_12":0.015,
+	"Para_13":0.015,
+	"Para_14":0.015,
+	"Para_15":0.015,
+	"Para_16":0.1
+  }

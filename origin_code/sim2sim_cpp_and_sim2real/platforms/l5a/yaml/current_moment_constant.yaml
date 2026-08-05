@@ -1,0 +1,14 @@
+# 电机的电流力矩常数，单位为Nm/A
+# 关节顺序遵循robot_model.h中的AllJoints
+# enum class AllJoints {
+#   left_hip_joint = 6,
+#   left_knee_joint,
+#   fl_wheel_joint,
+#   rl_wheel_joint,
+#   right_hip_joint,
+#   right_knee_joint,
+#   fr_wheel_joint,
+#   rr_wheel_joint,
+# };
+
+current_moment_constants: [11.5, 6.58, 2.7, 2.7, 11.5, 6.58, 2.7, 2.7]

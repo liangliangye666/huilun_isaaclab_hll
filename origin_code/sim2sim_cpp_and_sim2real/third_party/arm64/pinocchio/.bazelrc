@@ -1,0 +1,10 @@
+# Use C++17.
+build --cxxopt=-std=c++17 
+build --local_resources=cpu=16 
+build --compilation_mode=opt
+
+# build --verbose_failures  
+build --experimental_convenience_symlinks=ignore
+
+run --local_resources=cpu=16 
+run --compilation_mode=opt
