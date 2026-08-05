@@ -1,6 +1,6 @@
 <mujoco model="l5aurdf20260521">
   <compiler angle="radian" meshdir="../meshes/"/>
-<option timestep="0.005" integrator="RK4">    <!-- <flag contact="disable" /> -->
+<option timestep="0.002" integrator="RK4">    <!-- <flag contact="disable" /> -->
   </option>
   <default>
     <light castshadow="false" diffuse="1 1 1" />
@@ -72,6 +72,7 @@
               <joint name="left_wheel_joint" pos="0 0 0" axis="0 1 0" range="-1000000 1000000" actuatorfrcrange="-90 90"/>
               <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.79216 0.81961 0.93333 1" mesh="left_wheel_link"/>
               <geom type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="left_wheel_link"/>
+              <site name="wheel_left_site" pos="0 0 0"/>
             </body>
           </body>
         </body>
@@ -96,6 +97,7 @@
               <joint name="right_wheel_joint" pos="0 0 0" axis="0 1 0" range="-1000000 1000000" actuatorfrcrange="-90 90"/>
               <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.89804 0.91765 0.92941 1" mesh="right_wheel_link"/>
               <geom type="mesh" rgba="0.89804 0.91765 0.92941 1" mesh="right_wheel_link"/>
+              <site name="wheel_right_site" pos="0 0 0"/>
             </body>
           </body>
         </body>

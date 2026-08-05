@@ -231,7 +231,7 @@ previous action          8
 
 ```text
 indices 0,1,2,4,5,6: leg position, scale 0.25 + default position
-indices 3,7:           wheel velocity, scale 1.0
+indices 3,7:           wheel velocity, scale 0.5
 ```
 
 不要把 8 维 action 全部解释为位置目标，也不要在当前策略和硬件之间再次换序。

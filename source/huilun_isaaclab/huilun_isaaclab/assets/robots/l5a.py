@@ -79,6 +79,7 @@ L5A_MIN_TRACK_WIDTH = 0.27
 L5A_MAX_TRACK_WIDTH = 0.30
 L5A_NOMINAL_TRACK_WIDTH = 0.28
 L5A_NOMINAL_BASE_HEIGHT = 0.645
+L5A_INITIAL_BASE_HEIGHT = L5A_NOMINAL_BASE_HEIGHT + 0.005
 
 
 # 基础资产保持既有 L5A 的物理参数。
@@ -107,7 +108,8 @@ L5A_CFG = ArticulationCfg(
         ),
     ),
     init_state=ArticulationCfg.InitialStateCfg(
-        pos=(0.0, 0.0, 0.695),
+        # 名义站立高度为 0.645 m；生成环境时额外抬高 5 mm，避免初始接触穿透。
+        pos=(0.0, 0.0, L5A_INITIAL_BASE_HEIGHT),
         rot=(1.0, 0.0, 0.0, 0.0),
         joint_pos={
             "left_hip_roll_joint": 0.0523599,
@@ -127,15 +129,15 @@ L5A_CFG = ArticulationCfg(
             joint_names_expr=LEG_JOINT_NAMES,
             effort_limit_sim={".*hip.*": 90.0, ".*knee.*": 130.0},
             velocity_limit_sim={".*hip.*": 16.433, ".*knee.*": 14.653},
-            stiffness={".*hip_roll.*": 40.0, ".*hip_pitch.*": 40.0, ".*knee.*": 80.0},
-            damping={".*hip_roll.*": 2.0, ".*hip_pitch.*": 2.0, ".*knee.*": 2.0},
+            stiffness={".*hip_roll.*": 84.0, ".*hip_pitch.*": 84.0, ".*knee.*": 84.0},
+            damping={".*hip_roll.*": 2.5, ".*hip_pitch.*": 2.5, ".*knee.*": 2.5},
         ),
         "wheels": ImplicitActuatorCfg(
             joint_names_expr=WHEEL_JOINT_NAMES,
             effort_limit_sim=90.0,
             velocity_limit_sim=16.433,
             stiffness=0.0,
-            damping=1.5,
+            damping=0.8,
         ),
     },
 )
@@ -152,16 +154,16 @@ L5A_WF_CFG.actuators = {
         effort_limit_sim={".*hip.*": 90.0, ".*knee.*": 130.0, ".*wheel.*": 90.0},
         velocity_limit_sim={".*hip.*": 16.433, ".*knee.*": 14.653, ".*wheel.*": 16.433},
         stiffness={
-            ".*hip_roll.*": 40.0,
-            ".*hip_pitch.*": 40.0,
-            ".*knee.*": 80.0,
+            ".*hip_roll.*": 84.0,
+            ".*hip_pitch.*": 84.0,
+            ".*knee.*": 84.0,
             ".*wheel.*": 0.0,
         },
         damping={
-            ".*hip_roll.*": 2.0,
-            ".*hip_pitch.*": 2.0,
-            ".*knee.*": 2.0,
-            ".*wheel.*": 1.5,
+            ".*hip_roll.*": 2.5,
+            ".*hip_pitch.*": 2.5,
+            ".*knee.*": 2.5,
+            ".*wheel.*": 0.8,
         },
         # 延迟单位是物理仿真步，不是策略步；WF 任务 dt=0.005 s，
         # 因此 0--6 步对应共享的 0--30 ms 命令延迟。

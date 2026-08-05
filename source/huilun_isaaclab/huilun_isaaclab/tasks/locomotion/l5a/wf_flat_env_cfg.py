@@ -144,7 +144,7 @@ class ActionsCfg:
     保证每个 term 内部严格按左/右关节常量映射。
 
     腿动作被解释为“每环境随机化后的默认关节角 + 0.25 * action”，轮动作被
-    解释为“默认轮速 + 1.0 * action”。前者是位置目标，后者是速度目标，二者
+    解释为“默认轮速 + 0.5 * action”。前者是位置目标，后者是速度目标，二者
     虽在同一策略向量中，进入执行器后的物理含义不同。
     """
 
@@ -159,8 +159,8 @@ class ActionsCfg:
     left_wheel_vel = mdp.JointVelocityActionCfg(
         asset_name="robot",
         joint_names=LEFT_WHEEL_JOINT_NAMES,
-        # 轮半径 0.127 m；1.0 m/s 指令对应约 7.87 rad/s，这里保留当前 WF 的 1.0 缩放。
-        scale=1.0,
+        # 轮速目标 = 0.5 * action，与当前选定的 L5A 训练/部署控制契约一致。
+        scale=0.5,
         use_default_offset=True,
         preserve_order=True,
     )
@@ -175,7 +175,7 @@ class ActionsCfg:
     right_wheel_vel = mdp.JointVelocityActionCfg(
         asset_name="robot",
         joint_names=RIGHT_WHEEL_JOINT_NAMES,
-        scale=1.0,
+        scale=0.5,
         use_default_offset=True,
         preserve_order=True,
     )

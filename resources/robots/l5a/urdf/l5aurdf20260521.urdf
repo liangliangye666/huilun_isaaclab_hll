@@ -237,17 +237,17 @@
     name="left_wheel_link">
     <inertial>
       <origin
-        xyz="0 0.03878 2E-06"
+        xyz=" -0.007268  0.034782 -0.003159"
         rpy="0 0 0" />
       <mass
-        value="1.5825" />
+        value="1.232459" />
       <inertia
-        ixx="0.006787"
+        ixx="0.004718"
         ixy="0"
         ixz="0"
-        iyy="0.012709"
+        iyy=" 0.008809"
         iyz="0"
-        izz="0.006786" />
+        izz="0.004718" />
     </inertial>
     <visual>
       <origin
@@ -469,17 +469,17 @@
     name="right_wheel_link">
     <inertial>
       <origin
-        xyz="-2E-06 -0.038778 0"
+        xyz="-0.000001 -0.034784 0"
         rpy="0 0 0" />
       <mass
-        value="1.5838" />
+        value="1.233799" />
       <inertia
-        ixx="0.006787"
+        ixx="0.004718"
         ixy="0"
         ixz="0"
-        iyy="0.01271"
+        iyy="0.008809"
         iyz="0"
-        izz="0.006787" />
+        izz="0.004718" />
     </inertial>
     <visual>
       <origin

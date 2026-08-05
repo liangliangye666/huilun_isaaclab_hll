@@ -96,24 +96,27 @@ L5A 保持 `dt=0.005 s`，并使用 `decimation=4`，所以策略频率为 50 Hz
 0 left_hip_roll_joint       position, scale 0.25 + randomized default
 1 left_hip_pitch_joint      position, scale 0.25 + randomized default
 2 left_knee_joint           position, scale 0.25 + randomized default
-3 left_wheel_joint          velocity, scale 1.0
+3 left_wheel_joint          velocity, scale 0.5
 4 right_hip_roll_joint      position, scale 0.25 + randomized default
 5 right_hip_pitch_joint     position, scale 0.25 + randomized default
 6 right_knee_joint          position, scale 0.25 + randomized default
-7 right_wheel_joint         velocity, scale 1.0
+7 right_wheel_joint         velocity, scale 0.5
 ```
 
 该顺序与真机 DOF 顺序完全相同，因此 Manifest 中的策略动作到硬件动作、
 硬件状态到策略状态两个映射都是 `[0, 1, 2, 3, 4, 5, 6, 7]`。
 
-以下 L5A 参数保持不变：
+当前 L5A 训练/部署参数为：
 
 - physics `dt=0.005 s`
 - policy `decimation=4` (`control_period=0.02 s`, 50 Hz)
 - wheel radius `0.127 m`
 - nominal track width `0.28 m`，允许范围 `0.27–0.30 m`
 - target base height `0.645 m`
-- 原有关节默认角、effort/velocity limits 和 Kp/Kd
+- environment initial base height `0.650 m`（名义高度上抬 `5 mm`）
+- 原有关节默认角和 effort/velocity limits
+- leg stiffness `84/84/84`，leg damping `2.5/2.5/2.5`
+- wheel stiffness `0`，wheel damping `0.8`
 - 关闭 self-collision，soft position limit factor `0.95`
 
 训练使用一个统一的 delayed implicit actuator。每个环境为完整 8 维命令

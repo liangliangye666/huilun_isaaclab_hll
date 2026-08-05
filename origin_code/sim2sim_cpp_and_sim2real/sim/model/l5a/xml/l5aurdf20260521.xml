@@ -30,71 +30,21 @@
   <worldbody>
     <light pos="5 0 30" />
     <geom name="plane" type="plane" size="20 20 .01" material="grid" friction="1.0 0.02 0.01"/>
+    <!-- 独木桥 -->
     <!-- <geom name="up_slope" type="box" size="1 0.2 0.02" pos="5.96 0.2 0" euler="0 0.1745 0" rgba="0.5 0.4 0.3 1"/>
     <geom name="flat" type="box" size="1 0.2 0.02" pos="3.98 0.2 0.173" euler="0 0 0" rgba="0.5 0.4 0.3 1"/>
     <geom name="down_slope" type="box" size="1 0.2 0.02" pos="2 0.2 0" euler="0 -0.1745 0" rgba="0.5 0.4 0.3 1"/> -->
-
-            <!-- Step 1 -->
-    <geom name="step1" type="box"
-          size="0.15 2.0 0.05"
-          pos="3.0 0.0 0.05"
-          rgba="0.5 0.4 0.3 1"/>
-
-    <!-- Step 2 -->
-    <geom name="step2" type="box"
-          size="0.15 2.0 0.05"
-          pos="3.3 0.0 0.15"
-          rgba="0.5 0.4 0.3 1"/>
-
-    <!-- Step 3 -->
-    <geom name="step3" type="box"
-          size="0.15 2.0 0.05"
-          pos="3.6 0.0 0.25"
-          rgba="0.5 0.4 0.3 1"/>
-
-    <!-- Step 4 -->
-    <geom name="step4" type="box"
-          size="0.15 2.0 0.05"
-          pos="3.9 0.0 0.35"
-          rgba="0.5 0.4 0.3 1"/>
-
-    <!-- Step 5 -->
-    <geom name="step5" type="box"
-          size="0.15 2.0 0.05"
-          pos="4.2 0.0 0.45"
-          rgba="0.5 0.4 0.3 1"/>
-
-    <!-- Step 6 -->
-    <geom name="step6" type="box"
-          size="0.15 2.0 0.05"
-          pos="4.5 0.0 0.55"
-          rgba="0.5 0.4 0.3 1"/>
-  
-    <!-- Step 7 -->
-    <geom name="step7" type="box"
-          size="0.15 2.0 0.05"
-          pos="4.8 0.0 0.65"
-          rgba="0.5 0.4 0.3 1"/>
-
-    <!-- Step 8 -->
-    <geom name="step8" type="box"
-          size="0.15 2.0 0.05"
-          pos="5.1 0.0 0.75"
-          rgba="0.5 0.4 0.3 1"/>
-    
-    <!-- Step 9 -->
-    <geom name="step9" type="box"
-          size="0.15 2.0 0.05"
-          pos="5.4 0.0 0.85"
-          rgba="0.5 0.4 0.3 1"/>
-  
-    <!-- Step 10 -->
-    <geom name="step10" type="box"
-          size="0.15 2.0 0.05"
-          pos="5.7 0.0 0.95"
-          rgba="0.5 0.4 0.3 1"/>
-
-
+    <!-- 楼梯 -->
+    <!-- <geom name="step_1" type="box" size="0.200 1.500 0.040" pos="1.200 0 0.040" rgba="0.5 0.4 0.3 1" friction="1.0 0.02 0.01"/>
+    <geom name="step_2" type="box" size="0.200 1.500 0.080" pos="1.600 0 0.080" rgba="0.5 0.4 0.3 1" friction="1.0 0.02 0.01"/>
+    <geom name="step_3" type="box" size="0.200 1.500 0.120" pos="2.000 0 0.120" rgba="0.5 0.4 0.3 1" friction="1.0 0.02 0.01"/>
+    <geom name="step_4" type="box" size="0.200 1.500 0.160" pos="2.400 0 0.160" rgba="0.5 0.4 0.3 1" friction="1.0 0.02 0.01"/>
+    <geom name="step_5" type="box" size="0.200 1.500 0.200" pos="2.800 0 0.200" rgba="0.5 0.4 0.3 1" friction="1.0 0.02 0.01"/>
+    <geom name="step_6" type="box" size="0.200 1.500 0.240" pos="3.200 0 0.240" rgba="0.5 0.4 0.3 1" friction="1.0 0.02 0.01"/>
+    <geom name="step_7" type="box" size="0.200 1.500 0.280" pos="3.600 0 0.280" rgba="0.5 0.4 0.3 1" friction="1.0 0.02 0.01"/>
+    <geom name="step_8" type="box" size="0.200 1.500 0.320" pos="4.000 0 0.320" rgba="0.5 0.4 0.3 1" friction="1.0 0.02 0.01"/>
+    <geom name="step_9" type="box" size="0.200 1.500 0.360" pos="4.400 0 0.360" rgba="0.5 0.4 0.3 1" friction="1.0 0.02 0.01"/>
+    <geom name="step_10" type="box" size="0.200 1.500 0.400" pos="4.800 0 0.400" rgba="0.5 0.4 0.3 1" friction="1.0 0.02 0.01"/> -->
 
     <body name="base_link">
       <inertial pos="-0.057921 0.000679 0.013437" quat="0.950827 -0.0135512 -0.309407 -0.00340622" mass="9.6101" diaginertia="0.145462 0.116201 0.0884667"/>
@@ -209,9 +159,9 @@
 
   <keyframe>
     <!--两轮平衡和步态-->
-    <key time="0" qpos="0 0 0.643 1 0 0 0
-    0.0523599 0.261799 -0.563811 0
-    -0.0523599 0.261799 -0.563811 0" />
+    <key name="home" time="0" qpos="0 0 0.650 1 0 0 0
+    0.0523599 0.261799 -0.560251 0
+    -0.0523599 0.261799 -0.560251 0" />
   </keyframe>
 
 </mujoco>
