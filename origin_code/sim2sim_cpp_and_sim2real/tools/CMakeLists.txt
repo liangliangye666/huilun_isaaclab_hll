@@ -15,7 +15,7 @@ if(SIM_ENABLE)
     install(TARGETS joystick_test DESTINATION bin)
 elseif(PHYSICS_ENABLE)
     target_compile_definitions(joystick PUBLIC PHYSICS_ENABLE=1)
-    target_include_directories(joystick PUBLIC ${PROJECT_SOURCE_DIR}/platforms/y4a/deploy)
+    target_include_directories(joystick PUBLIC ${PROJECT_SOURCE_DIR}/platforms/l5a/deploy)
 endif()
 
 target_include_directories(joystick PUBLIC ${CMAKE_SOURCE_DIR})

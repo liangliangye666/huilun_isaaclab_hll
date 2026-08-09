@@ -1,16 +1,15 @@
-#version:20260410
+# IsaacLab Huilun-L5A-WF-Flat Sim2Real deployment parameters.
+# The external standMode_step caller remains 0.002 s; decimation 10 gives a nominal 50 Hz policy request rate.
+
 control:
   # PD控制器参数:
   pd_controller:
-
-    kp: [42.0, 42.0, 42.0, 0.0, 42.0, 42.0, 42.0, 0.0]
+    kp: [84.0, 84.0, 84.0, 0.0, 84.0, 84.0, 84.0, 0.0]
     kd: [2.5, 2.5, 2.5, 0.8, 2.5, 2.5, 2.5, 0.8]
 
   pos_fb_controller:
-    kp: [42.0, 42.0, 42.0, 0.0, 42.0, 42.0, 42.0, 0.0]
+    kp: [84.0, 84.0, 84.0, 0.0, 84.0, 84.0, 84.0, 0.0]
     kd: [2.5, 2.5, 2.5, 0.8, 2.5, 2.5, 2.5, 0.8]
-    # kp: [200.0, 200.0, 250.0, 0.0, 200.0, 200.0, 250.0, 0.0]
-    # kd: [2, 2, 2, 1.5, 2, 2, 2, 1.5]
 
   action_scales:
     # 位置动作的缩放系数
@@ -26,26 +25,28 @@ control:
     edamp_wheel: 2.0
 
 obs_scales:
-  lin_vel: 2.0
-  lin_vel_y: 2.0
   ang_vel: 0.25
+  gravity: 1.0
   dof_pos: 1.0
   dof_vel: 0.05
-  quat: 1.0
-  height_measurements: 5.0
+  last_action: 1.0
 
 clip_obs: 100.0
 clip_actions: 100.0
 
-# deg
-default_pos: [0.0523599, 0.261799, -0.563811, 0.0, -0.0523599, 0.261799, -0.563811, 0.0]
+# [left leg, left wheel, right leg, right wheel]
+default_pos: [0.0523599, 0.261799, -0.560251, 0.0, -0.0523599, 0.261799, -0.560251, 0.0]
 
-#速度与角速度补偿
-lin_vel_x_com: -0.0
-lin_vel_y_com: -0.0
+# 速度与角速度补偿Physical command compensation. The current values preserve the legacy zero compensation.
+lin_vel_x_com: 0.0
+lin_vel_y_com: 0.0
 omega_com: 0.0
 
 model:
-  estimator: "estimator.pt"
-  controller: "policy_1.pt"
-  scan_encoder: "724-02-60000-scan_hist_encoder_jit.pt"
+  estimator: "velocity_estimator.pt"
+  controller: "policy.pt"
+  proprioception_dim: 28
+  history_length: 10
+  estimated_velocity_dim: 3
+  command_dim: 3
+  action_dim: 8

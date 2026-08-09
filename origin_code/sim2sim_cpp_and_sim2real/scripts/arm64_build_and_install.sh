@@ -1,29 +1,19 @@
 #!/bin/bash
-rm -r install_arm64
 
-root_path=$(pwd)
-cmake --fresh -DCMAKE_TOOLCHAIN_FILE=${root_path}/cmake/aarch64_rostoolchain.cmake -B build_arm64 -S .
-time make install -j --no-print-directory -C build_arm64
+set -euo pipefail
 
-bash "${root_path}/deb_tool/app_deb_generate.sh" \
-  "${root_path}/install_arm64" \
-  "${root_path}/deb_tool" \
-  "${root_path}/install_arm64"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+project_root="$(cd "${script_dir}/.." && pwd)"
+build_dir="${project_root}/build_arm64"
+install_dir="${project_root}/install_arm64"
+toolchain_file="${project_root}/cmake/aarch64_rostoolchain.cmake"
 
-# install
-branch_name=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+rm -rf -- "${install_dir}"
 
-if [ -z "$branch_name" ]; then
-    echo "Error: Not in a Git repository, exiting script."
-    exit 1
-fi
+cmake --fresh \
+  -DCMAKE_TOOLCHAIN_FILE="${toolchain_file}" \
+  -B "${build_dir}" \
+  -S "${project_root}"
+time cmake --build "${build_dir}" --target install --parallel
 
-# 检查 SSH 连接是否可用
-if ! ssh -o ConnectTimeout=3 gac-robotics "exit" &>/dev/null; then
-    exit 1
-fi
-
-target_dir="/user_space/$branch_name"
-echo "✅ SSH connection OK, installing to $target_dir ..."
-rsync -avz --chmod=ugo=rx,u+w ./install_arm64/ gac-robotics:"$target_dir/"
-echo "✅ Install complete."
+echo "ARM64 install bundle: ${install_dir}"

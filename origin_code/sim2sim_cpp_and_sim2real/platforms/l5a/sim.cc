@@ -58,34 +58,10 @@ void MyController(const mjModel* m, mjData* d) {
   robot_model.UpdateMujocoJointStates(m, d);
   robot_model.UpdateModel();
   static l5a::FSM fsm(robot_model);
-  robot_model.vel_x_des_ = 0.5;
-  robot_model.vel_y_des_ = -0.0;
-  robot_model.omega_des_ = 0.02;
-  robot_model.gait_enable_ = false;
-  static double count_num = 0;
-  static double count_num_plus = 0;
-  if(count_num > 1000 && count_num <= 6000){
-    robot_model.vel_x_des_ = 0.5;
-    // robot_model.omega_des_ = 0.5;
-    // robot_model.vel_y_des_ = 0.5;
-    robot_model.gait_enable_ = true;
-    robot_model.phase_ = std::fmod(count_num_plus * 0.002, 0.8) / 0.8;
-    count_num_plus++;
-  }else if(count_num > 6000 && count_num <= 9000){
-    robot_model.gait_enable_ = true;
-    robot_model.phase_ = std::fmod(count_num_plus * 0.002, 0.8) / 0.8;
-    count_num_plus++;
-    // count_num_plus = 0;
-  }else if(count_num > 9000 && count_num <= 14000){
-    // robot_model.vel_x_des_ = -0.5;
-    // robot_model.omega_des_ = -0.5;
-    // robot_model.vel_y_des_ = -0.5;
-    robot_model.gait_enable_ = true;
-    robot_model.phase_ = std::fmod(count_num_plus * 0.002, 0.8) / 0.8;
-    count_num_plus++;
-  }
-  count_num += 1;
- 
+  // 保留旧 C++ MuJoCo 的固定平衡/速度命令；当前 Actor 将其作为独立三维输入。
+  robot_model.vel_x_des_ = 0.0;
+  robot_model.vel_y_des_ = 0.0;
+  robot_model.omega_des_ = 0.0;
 
   fsm.Run(robot_model);
   Eigen::VectorXd pos_cmd = Eigen::VectorXd::Zero(robot_model.pino_model().nv-6); // 初始化力矩命令向量

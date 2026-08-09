@@ -1,81 +1,62 @@
 #include "rl.h"
 
+#include <chrono>
+#include <cstdlib>
+#include <stdexcept>
+#include <vector>
+
 namespace l5a {
+
 RL::RL(RobotModel& robot_model) {
-  // FLAGS_logtostderr = 1;
-  // FLAGS_colorlogtostderr = 1;
+  // set_env.sh 会在运行前设置 PROJECT_ROOT_DIR；控制器用它定位 YAML、URDF 和 TorchScript 模型。
+  const char* project_root = std::getenv("PROJECT_ROOT_DIR");
+  if (project_root == nullptr) {
+    throw std::runtime_error("PROJECT_ROOT_DIR is not set");
+  }
+  const std::string workspace_path(project_root);
 
-  num_obs_ = 32;                                   // 观测值数目,输入到actor网络
-  num_actions_ = robot_model.pino_model().nv - 6;  // 自由度数目,输出到电机执行
-  hist_len_ = 10;                                   // 历史观测长度,输入到critic和actor网络
-  num_est_ = 3;                                    // 估计状态数目,输入到critic和actor网络
-  num_ctrl_ = num_obs_ + num_est_;                 // 控制输入数目
+#if SIM_ENABLE
+  config_ = YAML::LoadFile(workspace_path + "/platforms/l5a/control/rl_parameters_sim.yaml");
+#elif PHYSICS_ENABLE
+  config_ = YAML::LoadFile(workspace_path + "/platforms/l5a/control/rl_parameters_physics.yaml");
+#endif
 
-  obs_ = Eigen::VectorXd::Zero(num_obs_);                   // 观测值
-  obs_hist_ = Eigen::VectorXd::Zero(num_obs_ * hist_len_);  // 观测历史
-  est_latent_ = Eigen::VectorXd::Zero(num_est_);            // 估计值
-  est_lin_vel_ = Eigen::VectorXd::Zero(num_est_);           // 估计线速度
-  actions_ = Eigen::VectorXd::Zero(num_actions_);           // 动作
-  vel_last_ = Eigen::VectorXd::Zero(num_actions_);          // 上一帧速度
-  vel_filted_ = Eigen::VectorXd::Zero(num_actions_);        // 滤波后的速度
-  vel_filter_init_ = false;
+  // 网络维度、归一化、动作和控制参数统一从当前部署 YAML 读取。
+  LoadParameters();
 
-  default_pos_ = Eigen::VectorXd::Zero(robot_model.pino_model().nv - 6);  // 默认位置
-  tau_ = Eigen::VectorXd::Zero(robot_model.pino_model().nv - 6);          // 力矩
-  pos_target_ = Eigen::VectorXd::Zero(robot_model.pino_model().nv - 6);   // 位置期望
-  vel_target_ = Eigen::VectorXd::Zero(robot_model.pino_model().nv - 6);   // 速度期望
+  obs_ = Eigen::VectorXd::Zero(num_obs_);
+  obs_hist_ = Eigen::VectorXd::Zero(num_obs_ * hist_len_);
+  cmd_ = Eigen::VectorXd::Zero(num_cmd_);
+  est_lin_vel_ = Eigen::VectorXd::Zero(num_est_);
+  actions_ = Eigen::VectorXd::Zero(num_actions_);
+  tau_ = Eigen::VectorXd::Zero(num_actions_);
+  pos_target_ = Eigen::VectorXd::Zero(num_actions_);
+  vel_target_ = Eigen::VectorXd::Zero(num_actions_);
 
-  forward_back_error_ = 0.0;
-  left_right_error_ = 0.0;
-  lin_vel_x_com_ = 0.0;
-  lin_vel_y_com_ = 0.0;
-  omega_com_ = 0.0;
-
-  kp_joints_ = Eigen::VectorXd::Zero(robot_model.pino_model().nv - 6);
-  kd_joints_ = Eigen::VectorXd::Zero(robot_model.pino_model().nv - 6);
-  pos_fb_kp_ = Eigen::VectorXd::Zero(robot_model.pino_model().nv - 6);
-  pos_fb_kd_ = Eigen::VectorXd::Zero(robot_model.pino_model().nv - 6);
-
-  // 初始化共享数据
   shared_data_.obs = Eigen::VectorXd::Zero(num_obs_);
-  shared_data_.est_latent = Eigen::VectorXd::Zero(num_est_);
-  shared_data_.est_lin_vel = Eigen::VectorXd::Zero(num_est_);
-  shared_data_.actions = Eigen::VectorXd::Zero(num_actions_);
-  shared_data_.base_vel = Eigen::Vector3d::Zero();
-  shared_data_.inference_ready = false;
-  shared_data_.has_new_result = false;
   shared_data_.obs_hist = Eigen::VectorXd::Zero(num_obs_ * hist_len_);
+  shared_data_.cmd = Eigen::VectorXd::Zero(num_cmd_);
+  shared_data_.actions = Eigen::VectorXd::Zero(num_actions_);
+  shared_data_.est_lin_vel = Eigen::VectorXd::Zero(num_est_);
 
   iter = 1;
 
-  // ros_publisher_ = ROS::Publisher::getInstance();
-
-// Load parameters
-#if SIM_ENABLE
-  std::string workspacePath = std::getenv("PROJECT_ROOT_DIR");
-  config_ = YAML::LoadFile(workspacePath + "/platforms/l5a/control/rl_parameters_sim.yaml");
-#elif PHYSICS_ENABLE
-  std::string workspacePath = std::getenv("PROJECT_ROOT_DIR");
-  config_ = YAML::LoadFile(workspacePath + "/platforms/l5a/control/rl_parameters_physics.yaml");
-#endif
-  LoadParameters();
   pd_controller_joints_ = PdController<Eigen::VectorXd>(kp_joints_, kd_joints_);
-  auto start = std::chrono::high_resolution_clock::now();
-  controller_ = torch::jit::load(workspacePath + "/platforms/l5a/control/module/" + model_ctrl_);
-  estimator_ = torch::jit::load(workspacePath + "/platforms/l5a/control/module/" + model_est_);
-  WarmUpModels();
 
-  auto end = std::chrono::high_resolution_clock::now();
-  auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
-  double time_ns = duration.count();
-  double time_ms = time_ns / 1000000;
-  std::cout << "RL initialization time: " << time_ms << " ms" << std::endl;
-  // 启动推理线程
+  const auto start = std::chrono::high_resolution_clock::now();
+  controller_ = torch::jit::load(workspace_path + "/platforms/l5a/control/module/" + model_ctrl_);
+  estimator_ = torch::jit::load(workspace_path + "/platforms/l5a/control/module/" + model_est_);
+  WarmUpModels();
+  const auto end = std::chrono::high_resolution_clock::now();
+  const double initialization_time_ms =
+      std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() / 1000000.0;
+  std::cout << "RL initialization time: " << initialization_time_ms << " ms" << std::endl;
+
+  // 保留旧部署的异步 latest-result-hold 推理结构。
   inference_thread_ = std::thread(&RL::InferenceLoop, this);
 }
 
 RL::~RL() {
-  // 停止推理线程
   should_stop_.store(true, std::memory_order_release);
   shared_data_.cv.notify_all();
   if (inference_thread_.joinable()) {
@@ -85,331 +66,248 @@ RL::~RL() {
 
 void RL::InferenceLoop() {
   while (!should_stop_) {
-    // 等待推理请求
-    Eigen::VectorXd obs, obs_hist, est_latent_hist, cmd;
-    Eigen::Vector3d base_vel;
+    Eigen::VectorXd observation;
+    Eigen::VectorXd observation_history;
+    Eigen::VectorXd commands;
 
     {
-      std::unique_lock<std::mutex> lock(shared_data_.mutex);  // 锁定共享数据shared_data_
-      shared_data_.cv.wait(
-          lock,
-          [this]() {  // 调用cv.wait时,会自动解锁shared_data_.mutex,让其他线程有机会修改数据,当其他线程调用cv.notify_one或cv.notify_all,该线程会被唤醒,被唤醒后会重新加锁
-            return shared_data_.inference_ready || should_stop_;  // false-阻塞等待,解锁中,其他线程可以修改共享数据;true-阻塞等待结束,加锁,向下执行数据拷贝
-          });
-
+      std::unique_lock<std::mutex> lock(shared_data_.mutex);
+      // cv.wait 会在阻塞时释放 mutex，被唤醒后重新加锁；这样控制线程可以继续写入新请求或析构时退出。
+      shared_data_.cv.wait(lock, [this]() { return shared_data_.inference_ready || should_stop_; });
       if (should_stop_) {
         break;
       }
 
-      // 获取输入数据的副本
-      obs = shared_data_.obs;
-      obs_hist = shared_data_.obs_hist;
-      base_vel = shared_data_.base_vel;
+      // 只在锁内拷贝输入快照，Torch forward 不占用共享锁，避免阻塞 500 Hz 控制线程。
+      observation = shared_data_.obs;
+      observation_history = shared_data_.obs_hist;
+      commands = shared_data_.cmd;
     }
 
-    // 在进行任何推理相关操作之前开始计时
-    auto start = std::chrono::high_resolution_clock::now();
+    const auto start = std::chrono::high_resolution_clock::now();
 
     try {
-      torch::NoGradGuard no_grad;  // 创建一个作用域,在该作用域内禁用自动梯度计算,能够显著减少内存占用并提高推理速度,因为在模型推理阶段不需要计算梯度.
+      // 推理阶段不需要梯度，禁用 autograd 可以减少内存占用和额外计算。
+      torch::NoGradGuard no_grad;
+      const auto double_options = torch::TensorOptions().dtype(torch::kDouble).requires_grad(false);
 
-      // estimator inference
-      Eigen::VectorXd est_input = CreateEstimatorInput(obs_hist, num_obs_, num_actions_, hist_len_);
+      // Encoder 输入是 10 帧 proprioception，按 oldest -> newest 排列。
+      // shape: history [1, 10, 28] -> estimated base linear velocity [1, 3]。
+      torch::Tensor history_tensor =
+          torch::from_blob(observation_history.data(), {1, hist_len_, num_obs_}, double_options)
+              .clone()
+              .toType(torch::kFloat);
+      std::vector<torch::jit::IValue> estimator_inputs{history_tensor};
+      torch::Tensor estimated_velocity = estimator_.forward(estimator_inputs).toTensor().contiguous().cpu();
 
-      torch::Tensor est_input_tensor =
-          torch::from_blob(est_input.data(), {1, (num_obs_)*hist_len_}, torch::TensorOptions().dtype(torch::kDouble).requires_grad(false)).clone();
-      est_input_tensor = est_input_tensor.toType(torch::kFloat);
-      std::vector<torch::jit::IValue> est_inputs;
-      est_inputs.push_back(est_input_tensor);
-      at::Tensor est_outputs = estimator_.forward(est_inputs).toTensor();
-      est_outputs = est_outputs.contiguous().cpu().toType(torch::kDouble);
-      const double* est_outputs_ptr = est_outputs.data_ptr<double>();
-      Eigen::Map<const Eigen::VectorXd> est_outputs_map(est_outputs_ptr, num_est_);
-      Eigen::Vector3d est_lin_vel = est_outputs_map / obs_scales_lin_vel_;
-      Eigen::VectorXd est_latent = est_lin_vel * obs_scales_lin_vel_;
-      // Eigen::VectorXd est_latent = base_vel * obs_scales_lin_vel_;  // 数据缩放,直接使用仿真器真值
-      // std::cout << "est:" << est_lin_vel << ", act:" << base_vel << std::endl;
+      // Actor 是 IsaacLab 导出的三输入模型，不再使用旧 Gym 的单个拼接 Tensor。
+      // 输入顺序必须和 policy_manifest.json 一致：
+      // estimated velocity [1, 3] + current proprioception [1, 28] + commands [1, 3] -> actions [1, 8]。
+      torch::Tensor observation_tensor =
+          torch::from_blob(observation.data(), {1, num_obs_}, double_options).clone().toType(torch::kFloat);
+      torch::Tensor command_tensor =
+          torch::from_blob(commands.data(), {1, num_cmd_}, double_options).clone().toType(torch::kFloat);
+      std::vector<torch::jit::IValue> controller_inputs{
+          estimated_velocity,
+          observation_tensor,
+          command_tensor,
+      };
+      torch::Tensor controller_outputs =
+          controller_.forward(controller_inputs).toTensor().contiguous().cpu().toType(torch::kDouble);
 
-      // controller inference
-      Eigen::VectorXd ctrl_input(num_ctrl_);
-      ctrl_input << obs, est_latent;
-      torch::Tensor ctrl_inputs_tensor =
-          torch::from_blob(ctrl_input.data(), {1, num_ctrl_}, torch::TensorOptions().dtype(torch::kDouble).requires_grad(false)).clone();
-      ctrl_inputs_tensor = ctrl_inputs_tensor.toType(torch::kFloat);
-      std::vector<torch::jit::IValue> ctrl_inputs;
-      ctrl_inputs.push_back(ctrl_inputs_tensor);
-      at::Tensor ctrl_outputs = controller_.forward(ctrl_inputs).toTensor();
-      ctrl_outputs = ctrl_outputs.contiguous().cpu().toType(torch::kDouble);
-      const double* ctrl_outputs_ptr = ctrl_outputs.data_ptr<double>();
-      Eigen::Map<const Eigen::VectorXd> actions_map(ctrl_outputs_ptr, num_actions_);
-      Eigen::VectorXd actions = actions_map;  // 推理得到动作
-      // std::cout << "actions: " << actions.transpose() << std::endl;
+      const double* action_data = controller_outputs.data_ptr<double>();
+      Eigen::Map<const Eigen::VectorXd> action_map(action_data, num_actions_);
+      const Eigen::VectorXd actions = action_map;
+
+      torch::Tensor estimated_velocity_double = estimated_velocity.toType(torch::kDouble);
+      const double* velocity_data = estimated_velocity_double.data_ptr<double>();
+      Eigen::Map<const Eigen::VectorXd> velocity_map(velocity_data, num_est_);
+      const Eigen::VectorXd estimated_linear_velocity = velocity_map;
+
+      const auto end = std::chrono::high_resolution_clock::now();
+      const double inference_time_ms =
+          std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() / 1000000.0;
 
       {
-        std::lock_guard<std::mutex> lock(shared_data_.mutex);  // 再次加锁
-        // 更新结果
-        shared_data_.est_latent = est_latent;  // 将推理结果写入共享变量
+        std::lock_guard<std::mutex> lock(shared_data_.mutex);
+        shared_data_.est_lin_vel = estimated_linear_velocity;
         shared_data_.actions = actions;
-        shared_data_.inference_ready = false;  // 重置变量,继续阻塞线程,等待下一次推理
-        shared_data_.has_new_result = true;    // 推理得到新结果
-
-        // 在完成所有操作后、释放锁之前结束计时
-        auto end = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
-        double time_ns = duration.count();
-        double time_ms = time_ns / 1000000;
-        shared_data_.inference_time_ms = time_ms;
+        shared_data_.inference_time_ms = inference_time_ms;
+        shared_data_.inference_ready = false;
+        shared_data_.has_new_result = true;
       }
-    } catch (const c10::Error& e) {
-      std::cerr << "Torch error in inference thread: " << e.what() << std::endl;
+    } catch (const c10::Error& error) {
+      std::cerr << "Torch error in inference thread: " << error.what() << std::endl;
+      std::lock_guard<std::mutex> lock(shared_data_.mutex);
+      // 失败后清掉 ready，避免控制线程永久认为推理线程还在忙。
+      shared_data_.inference_ready = false;
     }
   }
   std::cout << "InferenceLoop exited\n";
 }
 
 void RL::Run(RobotModel& robot_model) {
-  // 基坐标系的机身线速度和角速度
-  Eigen::Vector3d base_vel = robot_model.qdot.segment(0, 3);
-  Eigen::Vector3d base_omega = robot_model.qdot.segment(3, 3);
-
-  // 关节位置和速度
-  Eigen::VectorXd pos = robot_model.q_rpy.tail(robot_model.pino_model().nv - 6);
-  Eigen::VectorXd vel = robot_model.qdot.tail(robot_model.pino_model().nv - 6);
-  // Eigen::VectorXd vel = robot_model.joint_vel_;
-  // vel[static_cast<int>(Joints::left_wheel_joint)] = robot_model.qdot[static_cast<int>(Joints::left_wheel_joint) + 6];
-  // vel[static_cast<int>(Joints::right_wheel_joint)] = robot_model.qdot[static_cast<int>(Joints::right_wheel_joint) + 6];
-
-  Eigen::Vector3d base_euler = robot_model.ori_base_world_.euler;
+  // RobotModel 已经把基座角速度整理到机体系；这里直接按训练观测缩放。
+  const Eigen::Vector3d base_omega = robot_model.qdot.segment(3, 3);
+  const Eigen::VectorXd pos = robot_model.q_rpy.tail(num_actions_);
+  const Eigen::VectorXd vel = robot_model.qdot.tail(num_actions_);
 
   Eigen::Vector3d gravity;
-  gravity << 0.0, 0.0, -1;
-  Eigen::Vector3d projected_gravity = robot_model.R_BW * gravity;
+  gravity << 0.0, 0.0, -1.0;
+  const Eigen::Vector3d projected_gravity = robot_model.R_BW * gravity;
 
-  // base的线速度与角速度
-  // obs_.segment(0, 3) = base_vel * obs_scales_lin_vel_;
+  // 当前 IsaacLab WF-Flat 的 proprioception：3 + 3 + 6 + 8 + 8 = 28。
   obs_.segment(0, 3) = base_omega * obs_scales_ang_vel_;
-  obs_.segment(3, 3) = projected_gravity;
-  // for (int i = 3; i < 7; i++) {
-  //   obs_[i] = robot_model.q_pino[i] * obs_scales_quat_;  // quat
-  // }
-#if SIM_ENABLE
-  obs_[6] = robot_model.vel_x_des_ * obs_scales_lin_vel_;
-  obs_[7] = (robot_model.vel_y_des_ - 0.0) * obs_scales_lin_vel_y_;
-  obs_[8] = robot_model.omega_des_ * obs_scales_ang_vel_;
-#else
-  obs_[6] = (robot_model.vel_x_des_ + lin_vel_x_com_) * obs_scales_lin_vel_;
-  obs_[7] = (robot_model.vel_y_des_ + lin_vel_y_com_) * obs_scales_lin_vel_y_;
-  obs_[8] = (robot_model.omega_des_ + omega_com_) * obs_scales_ang_vel_;
-#endif
-  obs_[9] = 0.6447 * 5.0;
-  obs_[10] = (pos - default_pos_)[static_cast<int>(Joints::left_hip_roll_joint)] * obs_scales_dof_pos_;
-  obs_[11] = (pos - default_pos_)[static_cast<int>(Joints::left_hip_pitch_joint)] * obs_scales_dof_pos_;
-  obs_[12] = (pos - default_pos_)[static_cast<int>(Joints::left_knee_joint)] * obs_scales_dof_pos_;
-  obs_[13] = (pos - default_pos_)[static_cast<int>(Joints::right_hip_roll_joint)] * obs_scales_dof_pos_;
-  obs_[14] = (pos - default_pos_)[static_cast<int>(Joints::right_hip_pitch_joint)] * obs_scales_dof_pos_;
-  obs_[15] = (pos - default_pos_)[static_cast<int>(Joints::right_knee_joint)] * obs_scales_dof_pos_;
-  // 关节速度
-  obs_[16] = vel[static_cast<int>(Joints::left_hip_roll_joint)] * obs_scales_dof_vel_;
-  obs_[17] = vel[static_cast<int>(Joints::left_hip_pitch_joint)] * obs_scales_dof_vel_;
-  obs_[18] = vel[static_cast<int>(Joints::left_knee_joint)] * obs_scales_dof_vel_;
-  obs_[19] = vel[static_cast<int>(Joints::left_wheel_joint)] * obs_scales_dof_vel_;
-  obs_[20] = vel[static_cast<int>(Joints::right_hip_roll_joint)] * obs_scales_dof_vel_;
-  obs_[21] = vel[static_cast<int>(Joints::right_hip_pitch_joint)] * obs_scales_dof_vel_;
-  obs_[22] = vel[static_cast<int>(Joints::right_knee_joint)] * obs_scales_dof_vel_;
-  obs_[23] = vel[static_cast<int>(Joints::right_wheel_joint)] * obs_scales_dof_vel_;
-  obs_.segment(24, 8) = actions_;
-  // obs_[32] = robot_model.gait_enable_;
-  // obs_[33] = sin(2 * M_PI * robot_model.phase_) * robot_model.gait_enable_;
-  // obs_[34] = cos(2 * M_PI * robot_model.phase_) * robot_model.gait_enable_;
-  // obs_[35] = 1;
+  obs_.segment(3, 3) = projected_gravity * obs_scales_gravity_;
+
+  // 训练只把六个腿关节的位置误差放入 proprioception，两个轮子的位置不进入该段。
+  const Eigen::VectorXd relative_pos = pos - default_pos_;
+  obs_[6] = relative_pos[static_cast<int>(Joints::left_hip_roll_joint)] * obs_scales_dof_pos_;
+  obs_[7] = relative_pos[static_cast<int>(Joints::left_hip_pitch_joint)] * obs_scales_dof_pos_;
+  obs_[8] = relative_pos[static_cast<int>(Joints::left_knee_joint)] * obs_scales_dof_pos_;
+  obs_[9] = relative_pos[static_cast<int>(Joints::right_hip_roll_joint)] * obs_scales_dof_pos_;
+  obs_[10] = relative_pos[static_cast<int>(Joints::right_hip_pitch_joint)] * obs_scales_dof_pos_;
+  obs_[11] = relative_pos[static_cast<int>(Joints::right_knee_joint)] * obs_scales_dof_pos_;
+
+  // 8 个关节速度和上一帧 actor 原始动作都按统一关节顺序进入观测。
+  obs_.segment(12, num_actions_) = vel * obs_scales_dof_vel_;
+  obs_.segment(20, num_actions_) = actions_ * obs_scales_last_action_;
   obs_ = obs_.cwiseMin(clip_obs_).cwiseMax(-clip_obs_);
 
-  robot_model.observed_value[1] = actions_[0];
-  robot_model.observed_value[2] = actions_[1];
-  robot_model.observed_value[3] = actions_[2];
-  robot_model.observed_value[4] = actions_[3];
-  robot_model.observed_value[5] = actions_[4];
-  robot_model.observed_value[6] = actions_[5];
-  robot_model.observed_value[7] = actions_[6];
-  robot_model.observed_value[8] = actions_[7];
-  robot_model.observed_value[9] = obs_[8];
-  robot_model.observed_value[10] = obs_[9];
+  // 命令不属于 Encoder 历史，作为 Actor 的独立输入，单位保持 m/s、rad/s。
+#if SIM_ENABLE
+  cmd_[0] = robot_model.vel_x_des_ + lin_vel_x_com_;
+  cmd_[1] = robot_model.vel_y_des_ + lin_vel_y_com_;
+  cmd_[2] = robot_model.omega_des_ + omega_com_;
+#elif PHYSICS_ENABLE
+  cmd_[0] = robot_model.vel_x_des_ + lin_vel_x_com_;
+  cmd_[1] = robot_model.vel_y_des_ + lin_vel_y_com_;
+  cmd_[2] = robot_model.omega_des_ + omega_com_;
+#endif
 
-  robot_model.observed_value[11] = obs_[10];
-  robot_model.observed_value[12] = obs_[11];
-  robot_model.observed_value[13] = obs_[12];
-  robot_model.observed_value[14] = obs_[13];
-  robot_model.observed_value[15] = obs_[14];
-  robot_model.observed_value[16] = obs_[15];
-  robot_model.observed_value[17] = obs_[16];
-  robot_model.observed_value[18] = obs_[17];
-  robot_model.observed_value[19] = obs_[18];
-  robot_model.observed_value[20] = obs_[19];
-  robot_model.observed_value[21] = obs_[20];
-  robot_model.observed_value[22] = obs_[21];
-  robot_model.observed_value[23] = obs_[22];
-  robot_model.observed_value[24] = obs_[23];
-
-  // robot_model.observed_value[22] = shared_data_.inference_time_ms;
-  // robot_model.observed_value[23] = robot_model.omega_des_;
-
-
-
-
+  // 500 Hz 控制循环每 10 步提交一次推理请求；推理忙时跳过并保持最近动作。
   if (iter >= decimation_) {
-    // 更新共享数据以触发新的推理
-    {
-      std::lock_guard<std::mutex> lock(shared_data_.mutex);
-      // 更新历史缓冲区
-      if (!isInit_hist) {
-        isInit_hist = true;
-        obs_hist_ = obs_.replicate(hist_len_, 1);
-        est_latent_hist_ = est_latent_.replicate(hist_len_, 1);
-      } else {
-        UpdateHistoryBuffer(obs_hist_, obs_, num_obs_);
-        UpdateHistoryBuffer(est_latent_hist_, est_latent_, num_est_);
-      }
-      // 只有当前一次推理已完成时才触发新的推理
-      if (!shared_data_.inference_ready) {
-        shared_data_.obs = obs_;
-        shared_data_.base_vel = base_vel;
-        shared_data_.obs_hist = obs_hist_;
-        shared_data_.inference_ready = true;
-        shared_data_.cv.notify_one();
-      }
+    std::lock_guard<std::mutex> lock(shared_data_.mutex);
+    if (!is_init_hist_) {
+      is_init_hist_ = true;
+      // 第一帧没有历史时，用当前观测填满 10 帧，和 Python 部署端的冷启动逻辑一致。
+      obs_hist_ = obs_.replicate(hist_len_, 1);
+    } else {
+      UpdateHistoryBuffer(obs_hist_, obs_, num_obs_);
+    }
+
+    if (!shared_data_.inference_ready) {
+      shared_data_.obs = obs_;
+      shared_data_.obs_hist = obs_hist_;
+      shared_data_.cmd = cmd_;
+      shared_data_.inference_ready = true;
+      shared_data_.cv.notify_one();
     }
     iter = 0;
   }
 
-  // 获取最新的推理结果（如果有）
+  // 控制线程不等待本轮推理完成；有新结果就更新，否则继续使用上一帧动作。
   {
     std::lock_guard<std::mutex> lock(shared_data_.mutex);
     if (shared_data_.has_new_result) {
       actions_ = shared_data_.actions;
-      est_latent_ = shared_data_.est_latent;
       est_lin_vel_ = shared_data_.est_lin_vel;
       time_ms_ = shared_data_.inference_time_ms;
       shared_data_.has_new_result = false;
     }
   }
+
   actions_ = actions_.cwiseMin(clip_actions_).cwiseMax(-clip_actions_);
+
+  // 调试通道：action[8]、command[3]、estimated velocity[3]、推理耗时、obs[28]。
+  robot_model.observed_value.segment(1, num_actions_) = actions_;
+  robot_model.observed_value.segment(9, num_cmd_) = cmd_;
+  robot_model.observed_value.segment(12, num_est_) = est_lin_vel_;
+  robot_model.observed_value[15] = time_ms_;
+  robot_model.observed_value.segment(16, num_obs_) = obs_;
+
   Eigen::VectorXd pos_ref = actions_ * action_scales_pos_;
   Eigen::VectorXd vel_ref = actions_ * action_scales_vel_;
 
-// #if SIM_ENABLE
-//   // 在仿真中添加延迟,部署时无须添加
-//   // 缓存队列，长度为20，先进先出
-//   const int kDelayLen = int(0.020 / robot_model.control_dt);
-//   int kNumJoints = robot_model.pino_model().nv - 6;
-//   using ActVec = Eigen::VectorXd;
-//   static std::deque<ActVec> actions_fifo(kDelayLen, ActVec::Zero(kNumJoints));
-//   // push新actions_到队尾
-//   actions_fifo.push_back(actions_);
-//   // 若队列超长，弹出队首
-//   if (actions_fifo.size() > kDelayLen) {
-//     actions_fifo.pop_front();
-//   }
-//   // 使用队首（最旧）actions_
-//   const ActVec& delayed_actions = actions_fifo.front();
-
-//   pos_ref = delayed_actions * action_scales_pos_;
-//   vel_ref = delayed_actions * action_scales_vel_;
-// #endif
-
-  pos_ref.segment(3, 1).setZero();  // wheel pos ref set to zero
-  pos_ref.segment(7, 1).setZero();
-
-  vel_ref.segment(0, 3).setZero();  // joint vel ref set to zero
+  // 统一顺序下，腿输出位置目标，轮输出速度目标，不做动作重排。
+  pos_ref[static_cast<int>(Joints::left_wheel_joint)] = 0.0;
+  pos_ref[static_cast<int>(Joints::right_wheel_joint)] = 0.0;
+  // 腿部速度参考清零；轮子速度参考保留为 action * action_scales_vel_。
+  vel_ref.segment(0, 3).setZero();
   vel_ref.segment(4, 3).setZero();
 
-  // if(!vel_filter_init_){
-  //   vel_filted_ = vel_ref;
-  //   vel_filter_init_ = true;
-  // }else{
-  //   vel_filted_ = 0.95*vel_filted_ + 0.05*vel_ref;
-  // }
-
-  pos_target_ = pos_ref + default_pos_;
+  pos_target_ = default_pos_ + pos_ref;
   vel_target_ = vel_ref;
-  // std::cout << "pos_tar: " << pos_target_ << std::endl;
-  // std::cout << "vel_tar: " << vel_target_ << std::endl;
 
   pd_controller_joints_.set_x_actual(pos);
   pd_controller_joints_.set_x_desired(pos_target_);
   pd_controller_joints_.set_xdot_actual(vel);
   pd_controller_joints_.set_xdot_desired(vel_target_);
   tau_ = pd_controller_joints_.Update();
-  // std::cout << "tau_: " << tau_ << std::endl;
+
   ++iter;
 }
 
-void RL::UpdateHistoryBuffer(Eigen::VectorXd& hist_buf, const Eigen::VectorXd& buf, int num_buf) {
-  int total_len = hist_buf.size();
-  // 滑动窗口：向上移动，丢弃最老的一帧（前 num_buf 个元素）
-  hist_buf.head(total_len - num_buf) = hist_buf.tail(total_len - num_buf);
-  // 添加新的观测帧到最后
-  hist_buf.tail(num_buf) = buf;
-}
-
-Eigen::VectorXd RL::CreateEstimatorInput(const Eigen::VectorXd& obs_hist, int num_obs, int num_actions, int hist_len) {
-  // 计算每个观测中非动作部分的大小
-  // int obs_wo_actions_size = num_obs - num_actions;  // 22-6=16
-  int obs_wo_actions_size = num_obs;  // 22-6=16
-  // 创建结果向量
-  Eigen::VectorXd est_input(obs_wo_actions_size * hist_len);  // 16*10=160
-  for (int t = 0; t < hist_len; ++t) {
-    // 使用Eigen的分块操作提取每个时间步中的非动作部分
-    est_input.segment(t * obs_wo_actions_size,
-                      obs_wo_actions_size) =  // 挑选出除去actions后的160个信息作为状态估计的输入
-        obs_hist.segment(t * num_obs, obs_wo_actions_size);
-  }
-  return est_input;
+void RL::UpdateHistoryBuffer(Eigen::VectorXd& history, const Eigen::VectorXd& observation, int observation_dim) {
+  const int total_length = history.size();
+  // head 和 tail 引用同一底层缓冲区；eval() 保证滑动时不会被 Eigen 的别名覆盖。
+  history.head(total_length - observation_dim) = history.tail(total_length - observation_dim).eval();
+  history.tail(observation_dim) = observation;
 }
 
 void RL::RunEDamp(RobotModel& robot_model) {
-  Eigen::VectorXd vel = robot_model.qdot.segment(6, robot_model.pino_model().nv - 6);
-  tau_[static_cast<int>(Joints::left_hip_pitch_joint)] = edamp_kd_hip_ * (0 - vel[static_cast<int>(Joints::left_hip_pitch_joint)]);
-
-  tau_[static_cast<int>(Joints::left_knee_joint)] = edamp_kd_knee_ * (0 - vel[static_cast<int>(Joints::left_knee_joint)]);
-
-  tau_[static_cast<int>(Joints::left_wheel_joint)] = edamp_kd_wheel_ * (0 - vel[static_cast<int>(Joints::left_wheel_joint)]);
-
-  tau_[static_cast<int>(Joints::right_hip_pitch_joint)] = edamp_kd_hip_ * (0 - vel[static_cast<int>(Joints::right_hip_pitch_joint)]);
-
-  tau_[static_cast<int>(Joints::right_knee_joint)] = edamp_kd_knee_ * (0 - vel[static_cast<int>(Joints::right_knee_joint)]);
-
-  tau_[static_cast<int>(Joints::right_wheel_joint)] = edamp_kd_wheel_ * (0 - vel[static_cast<int>(Joints::right_wheel_joint)]);
+  const Eigen::VectorXd vel = robot_model.qdot.segment(6, num_actions_);
+  tau_[static_cast<int>(Joints::left_hip_pitch_joint)] =
+      edamp_kd_hip_ * (0.0 - vel[static_cast<int>(Joints::left_hip_pitch_joint)]);
+  tau_[static_cast<int>(Joints::left_knee_joint)] =
+      edamp_kd_knee_ * (0.0 - vel[static_cast<int>(Joints::left_knee_joint)]);
+  tau_[static_cast<int>(Joints::left_wheel_joint)] =
+      edamp_kd_wheel_ * (0.0 - vel[static_cast<int>(Joints::left_wheel_joint)]);
+  tau_[static_cast<int>(Joints::right_hip_pitch_joint)] =
+      edamp_kd_hip_ * (0.0 - vel[static_cast<int>(Joints::right_hip_pitch_joint)]);
+  tau_[static_cast<int>(Joints::right_knee_joint)] =
+      edamp_kd_knee_ * (0.0 - vel[static_cast<int>(Joints::right_knee_joint)]);
+  tau_[static_cast<int>(Joints::right_wheel_joint)] =
+      edamp_kd_wheel_ * (0.0 - vel[static_cast<int>(Joints::right_wheel_joint)]);
 }
 
 void RL::LoadParameters() {
-  kp_joints_ = Eigen::VectorXd::Map(config_["control"]["pd_controller"]["kp"].as<std::vector<double>>().data(),
-                                    config_["control"]["pd_controller"]["kp"].as<std::vector<double>>().size());
-  kd_joints_ = Eigen::VectorXd::Map(config_["control"]["pd_controller"]["kd"].as<std::vector<double>>().data(),
-                                    config_["control"]["pd_controller"]["kd"].as<std::vector<double>>().size());
-  pos_fb_kp_ = Eigen::VectorXd::Map(config_["control"]["pos_fb_controller"]["kp"].as<std::vector<double>>().data(),
-                                    config_["control"]["pos_fb_controller"]["kp"].as<std::vector<double>>().size());
-  pos_fb_kd_ = Eigen::VectorXd::Map(config_["control"]["pos_fb_controller"]["kd"].as<std::vector<double>>().data(),
-                                    config_["control"]["pos_fb_controller"]["kd"].as<std::vector<double>>().size());
-  // 访问数据
-  obs_scales_lin_vel_ = config_["obs_scales"]["lin_vel"].as<double>();
-  obs_scales_lin_vel_y_ = config_["obs_scales"]["lin_vel_y"].as<double>();
+  num_obs_ = config_["model"]["proprioception_dim"].as<int>();
+  hist_len_ = config_["model"]["history_length"].as<int>();
+  num_est_ = config_["model"]["estimated_velocity_dim"].as<int>();
+  num_cmd_ = config_["model"]["command_dim"].as<int>();
+  num_actions_ = config_["model"]["action_dim"].as<int>();
+  model_est_ = config_["model"]["estimator"].as<std::string>();
+  model_ctrl_ = config_["model"]["controller"].as<std::string>();
+
+  const std::vector<double> kp = config_["control"]["pd_controller"]["kp"].as<std::vector<double>>();
+  const std::vector<double> kd = config_["control"]["pd_controller"]["kd"].as<std::vector<double>>();
+  const std::vector<double> pos_fb_kp = config_["control"]["pos_fb_controller"]["kp"].as<std::vector<double>>();
+  const std::vector<double> pos_fb_kd = config_["control"]["pos_fb_controller"]["kd"].as<std::vector<double>>();
+  const std::vector<double> default_pos = config_["default_pos"].as<std::vector<double>>();
+
+  kp_joints_ = Eigen::Map<const Eigen::VectorXd>(kp.data(), kp.size());
+  kd_joints_ = Eigen::Map<const Eigen::VectorXd>(kd.data(), kd.size());
+  pos_fb_kp_ = Eigen::Map<const Eigen::VectorXd>(pos_fb_kp.data(), pos_fb_kp.size());
+  pos_fb_kd_ = Eigen::Map<const Eigen::VectorXd>(pos_fb_kd.data(), pos_fb_kd.size());
+  default_pos_ = Eigen::Map<const Eigen::VectorXd>(default_pos.data(), default_pos.size());
+
   obs_scales_ang_vel_ = config_["obs_scales"]["ang_vel"].as<double>();
+  obs_scales_gravity_ = config_["obs_scales"]["gravity"].as<double>();
   obs_scales_dof_pos_ = config_["obs_scales"]["dof_pos"].as<double>();
   obs_scales_dof_vel_ = config_["obs_scales"]["dof_vel"].as<double>();
-  obs_scales_quat_ = config_["obs_scales"]["quat"].as<double>();
-  obs_scales_height_ = config_["obs_scales"]["height_measurements"].as<double>();
+  obs_scales_last_action_ = config_["obs_scales"]["last_action"].as<double>();
+
   action_scales_pos_ = config_["control"]["action_scales"]["pos"].as<double>();
   action_scales_vel_ = config_["control"]["action_scales"]["vel"].as<double>();
+  decimation_ = config_["control"]["decimation"].as<int>();
+
   edamp_kd_hip_ = config_["control"]["EDamping"]["edamp_hip"].as<double>();
   edamp_kd_knee_ = config_["control"]["EDamping"]["edamp_knee"].as<double>();
   edamp_kd_wheel_ = config_["control"]["EDamping"]["edamp_wheel"].as<double>();
+
   clip_obs_ = config_["clip_obs"].as<double>();
   clip_actions_ = config_["clip_actions"].as<double>();
-  default_pos_ = Eigen::VectorXd::Map(config_["default_pos"].as<std::vector<double>>().data(), config_["default_pos"].as<std::vector<double>>().size());
-  decimation_ = config_["control"]["decimation"].as<int>();
-  model_est_ = config_["model"]["estimator"].as<std::string>();
-  model_ctrl_ = config_["model"]["controller"].as<std::string>();
-  model_scan_encoder_ = config_["model"]["scan_encoder"].as<std::string>();
   lin_vel_x_com_ = config_["lin_vel_x_com"].as<double>();
   lin_vel_y_com_ = config_["lin_vel_y_com"].as<double>();
   omega_com_ = config_["omega_com"].as<double>();
@@ -420,17 +318,20 @@ void RL::WarmUpModels() {
   controller_.to(torch::kCPU);
   estimator_.eval();
   estimator_.to(torch::kCPU);
-  // 预热模型
-  {
-    torch::NoGradGuard no_grad;
-    torch::Tensor dummy_est_input = torch::rand({1, (num_obs_)*hist_len_});
-    torch::Tensor dummy_ctrl_input = torch::rand({1, num_ctrl_});
-    // 封装为IValue向量
-    std::vector<torch::jit::IValue> est_inputs{dummy_est_input};
-    std::vector<torch::jit::IValue> ctrl_inputs{dummy_ctrl_input};
-    estimator_.forward(est_inputs);
-    controller_.forward(ctrl_inputs);
-  }
+
+  torch::NoGradGuard no_grad;
+  torch::Tensor dummy_history = torch::rand({1, hist_len_, num_obs_});
+  torch::Tensor dummy_observation = torch::rand({1, num_obs_});
+  torch::Tensor dummy_commands = torch::rand({1, num_cmd_});
+
+  std::vector<torch::jit::IValue> estimator_inputs{dummy_history};
+  torch::Tensor dummy_estimated_velocity = estimator_.forward(estimator_inputs).toTensor();
+  std::vector<torch::jit::IValue> controller_inputs{
+      dummy_estimated_velocity,
+      dummy_observation,
+      dummy_commands,
+  };
+  controller_.forward(controller_inputs);
 }
 
 }  // namespace l5a

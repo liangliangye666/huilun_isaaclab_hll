@@ -23,11 +23,8 @@ struct CtlSigs {
   double vel_y_des;
   double omega_des;
   bool rl_run;          //运行强化学习算法
-  bool gait_enable;     //步态使能
-  double gait_phase;    //步态相位
-  double gait_counter;  //步态相位计数器
 }; 
-CtlSigs ctlSigs{0.0, 0.0, 0.0, false, false, 0.0, 0.0};
+CtlSigs ctlSigs{0.0, 0.0, 0.0, false};
 //手柄信号处理,速度信号平滑,观测值处理函数声明
 void handleSigs_processing(standmode_output_t* standmode_output, const standmode_input_t* standmode_input, CtlSigs* ctlSigs, l5a::FSM* fsm);
 float updateWithSmartBrake(float current, float target, float a_up, float a_down, float dt);
@@ -39,7 +36,6 @@ void standMode_initialize(standmode_output_t* standmode_output, standmode_input_
   robot_model.Initialize();
   fsm.Initialize(robot_model);
   ctlSigs.rl_run = false;
-  ctlSigs.gait_enable = false;
   return;
 }
 //设置电机参数
@@ -121,7 +117,9 @@ void standMode_step(standmode_output_t* standmode_output, standmode_input_t* sta
   double call_time_ns = call_duration.count();
   call_time_ms = call_time_ns / 1000000;
   last_time = call_time;
-  robot_model.observed_value[30] = call_time_ms;
+  // RL 使用 1--43 通道记录动作、命令、估计速度、推理耗时和 28 维观测。
+  // 控制调用周期与本函数耗时放在其后的 45、44 通道，避免覆盖 RL 调试数据。
+  // robot_model.observed_value[45] = call_time_ms;
 
   setMotorParameters(standmode_output, standmode_input);                                                                //设置电机参数
   robot_model.UpdateRealJointStates(standmode_output, standmode_input);                                                 //更新反馈关节状态
@@ -131,8 +129,6 @@ void standMode_step(standmode_output_t* standmode_output, standmode_input_t* sta
   robot_model.vel_y_des_ = ctlSigs.vel_y_des;
   // robot_model.vel_x_des_ = ctlSigs.vel_x_des;
   robot_model.omega_des_ = ctlSigs.omega_des;
-  robot_model.gait_enable_ = ctlSigs.gait_enable;
-  robot_model.phase_ = ctlSigs.gait_phase;
   Eigen::VectorXd tau_cmd = Eigen::VectorXd::Zero(robot_model.pino_model().nv-6);         //下发的期望力矩命令
   Eigen::VectorXd pos_cmd = Eigen::VectorXd::Zero(robot_model.pino_model().nv-6);         //下发的期望位置命令
   Eigen::VectorXd vel_cmd = Eigen::VectorXd::Zero(robot_model.pino_model().nv-6);         //下发的速度命令
@@ -146,13 +142,6 @@ void standMode_step(standmode_output_t* standmode_output, standmode_input_t* sta
   pos_fb_kp = fsm.pos_fb_kp_;                     //获取各关节位置误差kp参数
   pos_fb_kd = fsm.pos_fb_kd_;                     //获取各关节位置误差kd参数
   // pos_cmd << 0, 0.261799, -0.508606, 0.0, 0, 0.261799, -0.508606, 0.0;
-
-  // robot_model.observed_value[14] = tau_cmd[0];     //观测力矩值
-  // robot_model.observed_value[15] = tau_cmd[1];
-  // robot_model.observed_value[16] = tau_cmd[2];
-  // robot_model.observed_value[17] = tau_cmd[3];
-  // robot_model.observed_value[18] = tau_cmd[4];
-  // robot_model.observed_value[19] = tau_cmd[5];
 
   standmode_output->joints_cmd.joint_h_roll_l.KP = pos_fb_kp[static_cast<int>(l5a::Joints::left_hip_roll_joint)];
   standmode_output->joints_cmd.joint_h_pitch_l.KP = pos_fb_kp[static_cast<int>(l5a::Joints::left_hip_pitch_joint)];
@@ -223,56 +212,13 @@ void standMode_step(standmode_output_t* standmode_output, standmode_input_t* sta
   }
   // std::cout << "pos_cmd" << pos_cmd.transpose() << std::endl;
 
-  // robot_model.observed_value[1] = robot_model.q_rpy[3];//roll
-  // robot_model.observed_value[2] = robot_model.q_rpy[4];//pitch
-  // // std::cout << "pitch:" << robot_model.q_rpy[4] << std::endl;
-  // robot_model.observed_value[3] = pos_cmd[static_cast<int>(l5a::Joints::left_hip_roll_joint)];
-  // robot_model.observed_value[4] = standmode_input->joints_status.joint_h_roll_l.pos_fb;
-  // robot_model.observed_value[5] = pos_cmd[static_cast<int>(l5a::Joints::right_hip_roll_joint)];
-  // robot_model.observed_value[6] = standmode_input->joints_status.joint_h_roll_r.pos_fb;
-  // robot_model.observed_value[7] = pos_cmd[static_cast<int>(l5a::Joints::left_hip_pitch_joint)];
-  // robot_model.observed_value[8] = standmode_input->joints_status.joint_h_pitch_l.pos_fb;
-  // robot_model.observed_value[9] = pos_cmd[static_cast<int>(l5a::Joints::right_hip_pitch_joint)];
-  // robot_model.observed_value[10] = standmode_input->joints_status.joint_h_pitch_r.pos_fb;
-  // robot_model.observed_value[11] = pos_cmd[static_cast<int>(l5a::Joints::left_knee_joint)];
-  // robot_model.observed_value[12] = standmode_input->joints_status.joint_k_pitch_l.pos_fb;
-  // robot_model.observed_value[13] = pos_cmd[static_cast<int>(l5a::Joints::right_knee_joint)];
-  // robot_model.observed_value[14] = standmode_input->joints_status.joint_k_pitch_r.pos_fb;
-  // robot_model.observed_value[15] = tau_cmd[static_cast<int>(l5a::Joints::left_wheel_joint)];
-  // robot_model.observed_value[16] = standmode_input->joints_status.joint_w_pitch_l.pos_fb * 2.1;
-  // robot_model.observed_value[17] = tau_cmd[static_cast<int>(l5a::Joints::right_wheel_joint)];
-  // robot_model.observed_value[18] = standmode_input->joints_status.joint_w_pitch_r.pos_fb * 2.1;
-  // robot_model.observed_value[3] = tau_cmd[static_cast<int>(l5a::Joints::left_hip_roll_joint)];
-  // robot_model.observed_value[4] = standmode_input->joints_status.joint_h_roll_l.torque_fb * 2.35;
-  // robot_model.observed_value[5] = tau_cmd[static_cast<int>(l5a::Joints::right_hip_roll_joint)];
-  // robot_model.observed_value[6] = standmode_input->joints_status.joint_h_roll_r.torque_fb * 2.35;
-  // robot_model.observed_value[7] = tau_cmd[static_cast<int>(l5a::Joints::left_hip_pitch_joint)];
-  // robot_model.observed_value[8] = standmode_input->joints_status.joint_h_pitch_l.torque_fb * 2.35;
-  // robot_model.observed_value[9] = tau_cmd[static_cast<int>(l5a::Joints::right_hip_pitch_joint)];
-  // robot_model.observed_value[10] = standmode_input->joints_status.joint_h_pitch_r.torque_fb * 2.35;
-  // robot_model.observed_value[11] = tau_cmd[static_cast<int>(l5a::Joints::left_knee_joint)];
-  // robot_model.observed_value[12] = standmode_input->joints_status.joint_k_pitch_l.torque_fb * 2.35;
-  // robot_model.observed_value[13] = tau_cmd[static_cast<int>(l5a::Joints::right_knee_joint)];
-  // robot_model.observed_value[14] = standmode_input->joints_status.joint_k_pitch_r.torque_fb * 2.35;
-  // robot_model.observed_value[15] = tau_cmd[static_cast<int>(l5a::Joints::left_wheel_joint)];
-  // robot_model.observed_value[16] = standmode_input->joints_status.joint_w_pitch_l.torque_fb * 2.1;
-  // robot_model.observed_value[17] = tau_cmd[static_cast<int>(l5a::Joints::right_wheel_joint)];
-  // robot_model.observed_value[18] = standmode_input->joints_status.joint_w_pitch_r.torque_fb * 2.1;
-
-  // robot_model.observed_value[19] = robot_model.q_rpy[11];
-  // robot_model.observed_value[20] = robot_model.q_rpy[12];
-  // robot_model.observed_value[21] = robot_model.q_rpy[13];
-  // record data
-
-
-  // record data
   displayObservedValue(standmode_output, robot_model.observed_value);
 
   auto end_time = std::chrono::high_resolution_clock::now();
   auto step_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - call_time);
   double step_time_ns = step_duration.count();
   double step_time_ms = step_time_ns / 1000000;
-  robot_model.observed_value[29] = step_time_ms;
+  // robot_model.observed_value[44] = step_time_ms;
 }
 
 void standMode_terminate(void) { return; }
@@ -280,7 +226,6 @@ void standMode_terminate(void) { return; }
 void handleSigs_processing(standmode_output_t* standmode_output, const standmode_input_t* standmode_input, CtlSigs* ctlSigs, l5a::FSM* fsm) {
   // 对手柄信号进行处理
   double handle_A = 0;   // 手柄A键
-  double handle_RT = 0;  // 手柄RT键
   double handle_B = 0;   // 手柄B键
   double handle_Y = 0;   // 手柄Y键
   double handle_RB = 0;  // 手柄RB键
@@ -290,11 +235,6 @@ void handleSigs_processing(standmode_output_t* standmode_output, const standmode
     handle_LT = 1.0;
   } else {
     handle_LT = 0;
-  }
-  if (standmode_input->Handle_signals.a5 >= 0.5) {
-    handle_RT = 1.0;
-  } else {
-    handle_RT = 0;
   }
   if (standmode_input->Handle_signals.b0 >= 0.5) {
     handle_A = 1.0;
@@ -322,7 +262,7 @@ void handleSigs_processing(standmode_output_t* standmode_output, const standmode
     handle_RB = 0;
   }
 
-if (std::abs(standmode_input->Handle_signals.a1 - 0.5) <= 0.1 || handle_LB) {
+  if (std::abs(standmode_input->Handle_signals.a1 - 0.5) <= 0.1 || handle_LB) {
     ctlSigs->vel_x_des = 0.0;
   } else {
     ctlSigs->vel_x_des = (standmode_input->Handle_signals.a1 - 0.5) * (-1.0) * handle_LT;
@@ -338,15 +278,6 @@ if (std::abs(standmode_input->Handle_signals.a1 - 0.5) <= 0.1 || handle_LB) {
     ctlSigs->omega_des = 0.0;
   } else {
     ctlSigs->omega_des = (standmode_input->Handle_signals.a3 - 0.5) * (-1.0) * handle_LT;
-  }
-
-  if (handle_RT) {
-    ctlSigs->gait_enable = true;
-    ctlSigs->gait_phase = std::fmod(ctlSigs->gait_counter * 0.002, 0.8) / 0.8;
-    ctlSigs->gait_counter += 1;
-  } else {
-    ctlSigs->gait_enable = false;
-    ctlSigs->gait_counter = 0;
   }
 
   // 定义模态切换按钮

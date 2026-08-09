@@ -9,9 +9,9 @@ IsaacLab 训练与导出
         |
         +-> Python MuJoCo Sim2Sim
         |
-        +-> C++ MuJoCo Sim2Sim（旧 Gym 基线，待迁移）
+        +-> C++ MuJoCo Sim2Sim（IsaacLab WF-Flat 策略）
         |
-        +-> C++ Sim2Real（旧 Gym 基线，待迁移）
+        +-> C++ Sim2Real（IsaacLab WF-Flat 策略）
 ```
 
 当前训练任务是 L5A wheel-legged WF flat locomotion，采用 Manager-Based IsaacLab、
@@ -83,7 +83,7 @@ gym.register
 | `resources/robots/l5a/` | 当前资产 | USD、URDF、XML、mesh、ROS message |
 | `sim2sim_mujoco_py/` | 当前部署主线 | Manifest 驱动的 Python MuJoCo + ONNX Runtime |
 | `origin_code/sim2sim_mujoco_py/` | 兼容/参考 | 单文件 TorchScript Python Sim2Sim |
-| `origin_code/sim2sim_cpp_and_sim2real/` | 迁移基线 | 旧 Gym C++ Sim2Sim/Sim2Real，当前尚不兼容新模型签名 |
+| `origin_code/sim2sim_cpp_and_sim2real/` | 当前 C++ 部署 | 保留旧外壳，已适配 WF-Flat 的 28 维观测、10 帧 Encoder 和三输入 Actor |
 | `docs/` | 文档真相 | 训练、架构和 AI 索引 |
 | `logs/rsl_rl/` | 生成物 | checkpoint、导出模型和 Manifest |
 | `outputs/` | 生成物 | Hydra/运行输出，不作为源码入口 |
@@ -271,11 +271,22 @@ sim2sim.py
 - `platforms/l5a/stand_mode.cc`：实机共享库 ABI；
 - `platforms/l5a/control/robot_model.*`：状态适配；
 - `platforms/l5a/control/fsm.*`：安全/FSM；
-- `platforms/l5a/control/rl.*`：旧 Gym 推理契约；
+- `platforms/l5a/control/rl.*`：当前 WF-Flat TorchScript 推理契约；
 - `platforms/l5a/deploy/standMode_types.h`：板端输入输出结构。
 
-当前状态：关节顺序一致，但观测、tensor shape、模型 forward 和时间步仍是旧 Gym 版本，
-不能直接加载当前 IsaacLab 导出。
+当前状态：关节顺序无需换序；C++ 已使用当前导出的 `velocity_estimator.pt`、`policy.pt`
+和两份手写部署 YAML。C++ MuJoCo 与真机刻意保留旧 2 ms × 10 的 500 Hz 底层、
+50 Hz 策略时序，而 Python MuJoCo 保持训练一致的 5 ms × 4。
+
+构建入口仍是小工程自己的脚本：Docker 内运行 `./scripts/build_and_install.sh` 生成
+`install/bin/sim_l5a`，运行 `./scripts/arm64_build_and_install.sh` 只生成
+`install_arm64/`。换模型时手工覆盖 `platforms/l5a/control/module/` 中的
+`policy.pt`、`velocity_estimator.pt`、`policy_manifest.json`，随后重新构建安装。
+
+2026-08-06 已验证新 TorchScript shape/SHA256、x86 配置编译安装和模型预热/异步前向，
+也已完成 ARM64 交叉编译并确认 aarch64 产物及 Torch 动态依赖。短时 MuJoCo 已加载
+ROS、XML 和 MuJoCo 3.2.2，但连续闭环稳定性、旧 UI/ROS 清理路径以及 RK3588 板端
+LibTorch 兼容性仍未验证；不能把本地构建通过解释为实机验证通过。
 
 ## 10. 资产和生成物
 

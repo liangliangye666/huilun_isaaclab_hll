@@ -1,0 +1,371 @@
+{
+  "history_order": "oldest_to_newest",
+  "actor_input_order": [
+    "estimated_base_linear_velocity",
+    "proprioception",
+    "commands"
+  ],
+  "models": {
+    "velocity_estimator": {
+      "inputs": [
+        {
+          "name": "observation_history",
+          "dtype": "float32",
+          "shape": [
+            "batch",
+            10,
+            28
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "estimated_base_linear_velocity",
+          "dtype": "float32",
+          "shape": [
+            "batch",
+            3
+          ]
+        }
+      ],
+      "files": {
+        "onnx": "velocity_estimator.onnx",
+        "pt": "velocity_estimator.pt"
+      }
+    },
+    "policy": {
+      "inputs": [
+        {
+          "name": "estimated_base_linear_velocity",
+          "dtype": "float32",
+          "shape": [
+            "batch",
+            3
+          ]
+        },
+        {
+          "name": "proprioception",
+          "dtype": "float32",
+          "shape": [
+            "batch",
+            28
+          ]
+        },
+        {
+          "name": "commands",
+          "dtype": "float32",
+          "shape": [
+            "batch",
+            3
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "actions",
+          "dtype": "float32",
+          "shape": [
+            "batch",
+            8
+          ]
+        }
+      ],
+      "files": {
+        "onnx": "policy.onnx",
+        "pt": "policy.pt"
+      }
+    }
+  },
+  "deployment": {
+    "source_env_cfg": "L5AWFFlatEnvCfg",
+    "physics_period_s": 0.005,
+    "decimation": 4,
+    "control_period_s": 0.02,
+    "history_samples": 10,
+    "history_duration_s": 0.2,
+    "shared_action_delay_physics_steps": [
+      0,
+      6
+    ],
+    "shared_action_delay_s": [
+      0.0,
+      0.03
+    ],
+    "training_joint_zero_error_rad": [
+      -0.05,
+      0.05
+    ],
+    "training_imu_mounting_bias_deg": [
+      -1.2,
+      1.2
+    ],
+    "proprioception_dim": 28,
+    "command_dim": 3,
+    "action_dim": 8,
+    "proprioception_layout": [
+      {
+        "name": "base_angular_velocity",
+        "size": 3,
+        "scale": 0.25,
+        "frame": "robot_base"
+      },
+      {
+        "name": "projected_gravity",
+        "size": 3,
+        "scale": 1.0,
+        "frame": "robot_base"
+      },
+      {
+        "name": "leg_joint_position_relative",
+        "size": 6,
+        "scale": 1.0,
+        "order": [
+          "left_hip_roll_joint",
+          "left_hip_pitch_joint",
+          "left_knee_joint",
+          "right_hip_roll_joint",
+          "right_hip_pitch_joint",
+          "right_knee_joint"
+        ]
+      },
+      {
+        "name": "joint_velocity_relative",
+        "size": 8,
+        "scale": 0.05,
+        "order": [
+          "left_hip_roll_joint",
+          "left_hip_pitch_joint",
+          "left_knee_joint",
+          "left_wheel_joint",
+          "right_hip_roll_joint",
+          "right_hip_pitch_joint",
+          "right_knee_joint",
+          "right_wheel_joint"
+        ]
+      },
+      {
+        "name": "previous_action",
+        "size": 8,
+        "scale": 1.0,
+        "order": [
+          "left_hip_roll_joint",
+          "left_hip_pitch_joint",
+          "left_knee_joint",
+          "left_wheel_joint",
+          "right_hip_roll_joint",
+          "right_hip_pitch_joint",
+          "right_knee_joint",
+          "right_wheel_joint"
+        ]
+      }
+    ],
+    "command_order": [
+      "linear_velocity_x",
+      "linear_velocity_y",
+      "angular_velocity_z"
+    ],
+    "policy_action_order": [
+      "left_hip_roll_joint",
+      "left_hip_pitch_joint",
+      "left_knee_joint",
+      "left_wheel_joint",
+      "right_hip_roll_joint",
+      "right_hip_pitch_joint",
+      "right_knee_joint",
+      "right_wheel_joint"
+    ],
+    "policy_action_semantics": {
+      "leg_position": {
+        "joints": [
+          "left_hip_roll_joint",
+          "left_hip_pitch_joint",
+          "left_knee_joint",
+          "right_hip_roll_joint",
+          "right_hip_pitch_joint",
+          "right_knee_joint"
+        ],
+        "scale": 0.25,
+        "uses_default_offset": true
+      },
+      "wheel_velocity": {
+        "joints": [
+          "left_wheel_joint",
+          "right_wheel_joint"
+        ],
+        "scale": 0.5,
+        "uses_default_offset": true
+      }
+    },
+    "hardware_dof_order": [
+      "left_hip_roll_joint",
+      "left_hip_pitch_joint",
+      "left_knee_joint",
+      "left_wheel_joint",
+      "right_hip_roll_joint",
+      "right_hip_pitch_joint",
+      "right_knee_joint",
+      "right_wheel_joint"
+    ],
+    "policy_actions_to_hardware_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "hardware_state_to_policy_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "robot_model": {
+      "name": "Huilun-L5A-WF",
+      "mjcf_path": "resources/robots/l5a/xml/l5aurdf20260521.xml",
+      "mjcf_sha256": "9c7c0f1b791b357417f409929e1be7fe7960ed467610aebb1ce18f2021d2af27",
+      "base_body": "base_link",
+      "base_joint": "base_joint",
+      "orientation_sensor": "orientation",
+      "angular_velocity_sensor": "angular-velocity",
+      "keyframe": "home"
+    },
+    "hardware_actuator_order": [
+      "left_hip_roll_joint",
+      "left_hip_pitch_joint",
+      "left_knee_joint",
+      "left_wheel_joint",
+      "right_hip_roll_joint",
+      "right_hip_pitch_joint",
+      "right_knee_joint",
+      "right_wheel_joint"
+    ],
+    "default_joint_positions": {
+      "order": [
+        "left_hip_roll_joint",
+        "left_hip_pitch_joint",
+        "left_knee_joint",
+        "left_wheel_joint",
+        "right_hip_roll_joint",
+        "right_hip_pitch_joint",
+        "right_knee_joint",
+        "right_wheel_joint"
+      ],
+      "values": [
+        0.0523599,
+        0.261799,
+        -0.560251,
+        0.0,
+        -0.0523599,
+        0.261799,
+        -0.560251,
+        0.0
+      ]
+    },
+    "joint_control": {
+      "order": [
+        "left_hip_roll_joint",
+        "left_hip_pitch_joint",
+        "left_knee_joint",
+        "left_wheel_joint",
+        "right_hip_roll_joint",
+        "right_hip_pitch_joint",
+        "right_knee_joint",
+        "right_wheel_joint"
+      ],
+      "modes": [
+        "position",
+        "position",
+        "position",
+        "velocity",
+        "position",
+        "position",
+        "position",
+        "velocity"
+      ],
+      "stiffness": [
+        84.0,
+        84.0,
+        84.0,
+        0.0,
+        84.0,
+        84.0,
+        84.0,
+        0.0
+      ],
+      "damping": [
+        2.5,
+        2.5,
+        2.5,
+        0.8,
+        2.5,
+        2.5,
+        2.5,
+        0.8
+      ],
+      "effort_limits": [
+        90.0,
+        90.0,
+        130.0,
+        90.0,
+        90.0,
+        90.0,
+        130.0,
+        90.0
+      ],
+      "velocity_limits": [
+        16.433,
+        16.433,
+        14.653,
+        16.433,
+        16.433,
+        16.433,
+        14.653,
+        16.433
+      ]
+    },
+    "command_limits": {
+      "linear_velocity_x": [
+        -1.0,
+        1.0
+      ],
+      "linear_velocity_y": [
+        0.0,
+        0.0
+      ],
+      "angular_velocity_z": [
+        -1.0,
+        1.0
+      ]
+    },
+    "policy_output_clip": 100.0
+  },
+  "source": {
+    "training_task": "Huilun-L5A-WF-Flat-v0",
+    "export_task": "Huilun-L5A-WF-Flat-Play-v0",
+    "checkpoint": {
+      "name": "model_23000.pt",
+      "sha256": "1be0b3fcb7e600c80f17252771535e49d053996465fd3a7ec56b34e3b837c719"
+    }
+  },
+  "artifacts": {
+    "policy.pt": {
+      "sha256": "8c4a9ffeba3317ceeb77f2fabc3b30aeb33fd0ec87b5cc87ba8519b37420e333"
+    },
+    "velocity_estimator.pt": {
+      "sha256": "98bc4266615ab92b2314c1ad879acc4a36ee9b08fecd980b1a862bb6ed709cb9"
+    },
+    "policy.onnx": {
+      "sha256": "a44bffc4ae289d3e2ef21069b5de926bad1017736456c834c31a2cd5a511c2bd"
+    },
+    "velocity_estimator.onnx": {
+      "sha256": "eb1b6b82b774b4d8b38e38af15f1224b5ed1139640b26e04376089d89e78326b"
+    }
+  }
+}

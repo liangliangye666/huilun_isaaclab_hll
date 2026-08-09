@@ -3,16 +3,18 @@
 ## 1. 文档范围与当前状态
 
 本文分析 `origin_code/sim2sim_cpp_and_sim2real/`。该目录从旧 Gym 工程
-`/mnt/isaacdata/马哥代码20260804/gac-robotics-mgc-y4a-rl/` 搬入，目的是保留原有
-C++ MuJoCo Sim2Sim 和 RK3588 Sim2Real 框架，再逐步接入本仓库的 IsaacLab 训练导出。
+`/mnt/isaacdata/马哥代码20260804/gac-robotics-mgc-y4a-rl/` 搬入，保留原有
+C++ MuJoCo Sim2Sim、RK3588 Sim2Real 外壳和真机 ABI，并已接入本仓库的
+IsaacLab WF-Flat 训练导出。
 
 必须先区分两个事实：
 
 - C++ 工程内部的 8 关节顺序已经是 `[左三腿, 左轮, 右三腿, 右轮]`，与当前 IsaacLab 策略一致。
-- C++ 工程仍使用旧 Gym 网络与观测契约，不能直接加载当前 IsaacLab 导出的模型。
+- C++ 工程当前使用 28 维本体观测、10 帧速度 Encoder 和三输入 Actor，可以直接加载
+  本工程随附的 `policy.pt` 与 `velocity_estimator.pt`。
 
-本文是当前本地副本的静态源码索引。本次没有完成 C++ 全量构建、MuJoCo 闭环运行、
-RK3588 部署或 500 Hz 实机抖动测试。
+本文区分静态源码、x86/ARM 构建、MuJoCo 运行和实机验证；具体已完成层级以本文验证章节
+和当次交付说明为准，未在 RK3588 上实际运行时不能据此声称实机验证通过。
 
 ## 2. 一句话架构
 
@@ -42,7 +44,7 @@ hardware/IMU feedback -> |      -> RL        | ----------> motor commands
 | `platforms/l5a/control/fsm.*` | 安全检查、RL/EDamping 状态切换 | 高 |
 | `platforms/l5a/control/rl.*` | 观测、历史、TorchScript 推理、动作和 PD | 高 |
 | `platforms/l5a/control/*.yaml` | 仿真/实机 PD、缩放、decimation、模型文件名 | 高 |
-| `platforms/l5a/control/module/` | 旧 Gym TorchScript 模型 | 高 |
+| `platforms/l5a/control/module/` | WF-Flat `policy.pt`、`velocity_estimator.pt` 和存档 Manifest | 高 |
 | `platforms/l5a/deploy/standMode_types.h` | 外部实机调用的输入/输出 ABI 数据结构 | 高 |
 | `platforms/l5a/deploy/drivers/` | ARM64 驱动程序、EtherCAT/手柄配置和板端应用 | 中 |
 | `sim/model/l5a/` | C++ MuJoCo 使用的 XML、URDF、mesh 和 ROS 消息 | 高 |
@@ -132,7 +134,7 @@ FSM 对外保存：
 
 ### 6.3 RL 与 PD
 
-旧 C++ 策略动作缩放为：
+当前 WF-Flat C++ 策略动作缩放为：
 
 ```text
 pos_ref = action * 0.25
@@ -208,7 +210,7 @@ standMode_terminate()
 `standMode_initialize()` 只重新初始化 RobotModel/FSM 的一部分状态，并不会重新构造
 RL 对象或完整清空历史与推理线程状态。
 
-外部周期调用者拥有主循环；`RobotModel` 和步态代码把控制周期写死为 `0.002 s`，
+外部周期调用者拥有主循环；`RobotModel` 的真机状态适配把控制周期写死为 `0.002 s`，
 所以它期望名义 500 Hz 调用，但实际频率由外部进程决定。`stand_mode.cc` 自己不创建
 500 Hz 定时线程。
 一次 `standMode_step()` 的主链为：
@@ -223,6 +225,11 @@ standmode_input_t
   -> standmode_output_t.joints_cmd
   -> observed_value debug channels
 ```
+
+命令行为保持旧部署外壳：C++ MuJoCo 固定发送 `[vx, vy, yaw]=[0.5, 0, 0.02]`；
+真机由 LT 使能后使用 `a1/a0/a3` 产生三轴命令，`vx` 继续经过加减速斜坡。三维命令
+以原始 `m/s、rad/s` 传给 Actor，不乘观测 scale。当前训练的 `vy` 范围固定为 0，
+所以真机保留的横向命令属于训练分布外行为，启用前必须单独评估。
 
 ### 8.1 输入 ABI
 
@@ -245,34 +252,35 @@ standmode_input_t
 紧急状态会调用 `setEmergencyParameters()`，把 8 个关节改为 mode 3。其物理效果和
 驱动侧解释必须在目标硬件上确认，不能只根据枚举数字推断安全性。
 
-## 9. 旧 C++ 推理线程与张量契约
+## 9. 当前 C++ 推理线程与张量契约
 
-### 9.1 旧观测
+### 9.1 当前观测与网络接口
 
-`rl.cc` 固定 `num_obs_=32`、`hist_len_=10`、`num_est_=3`：
+`rl.cc` 从运行时 YAML 读取 `num_obs=28`、`history_length=10`、
+`num_commands=3`、`num_estimated_values=3` 和 `num_actions=8`。单帧本体观测固定为：
 
 ```text
-base angular velocity                 3   obs[0:3]
-projected gravity                    3   obs[3:6]
-vx, vy, yaw command                  3   obs[6:9]
-fixed target height                  1   obs[9]
-six leg position errors              6   obs[10:16]
-all joint velocities                 8   obs[16:24]
-previous actions                     8   obs[24:32]
+base angular velocity * 0.25          3   obs[0:3]
+projected gravity                     3   obs[3:6]
+six leg positions relative default    6   obs[6:12]
+all joint velocities * 0.05           8   obs[12:20]
+previous raw actor actions             8   obs[20:28]
                                          --------
-                                         32
+                                         28
 ```
 
 网络契约：
 
 ```text
-history: 10 x 32 -> flattened [1, 320]
-estimator: [1, 320] -> [1, 3]
-actor: concat(current obs 32, estimated velocity 3) -> [1, 35]
-policy output: [1, 8]
+history: oldest-to-newest [1, 10, 28]
+velocity_estimator.pt(history) -> estimated_base_linear_velocity [1, 3]
+policy.pt(estimated_base_linear_velocity [1, 3],
+          proprioception [1, 28],
+          commands [1, 3]) -> actions [1, 8]
 ```
 
-第一次触发推理时，当前 observation 被复制 10 次填满历史；之后按 oldest-to-newest 滑动。
+第一次触发推理时，当前 observation 被复制 10 次填满历史；之后按 oldest-to-newest
+滑动。命令不再拼进本体观测，而是以原始 `m/s、rad/s` 单独传入 Actor。
 
 ### 9.2 异步 latest-result-hold
 
@@ -297,54 +305,88 @@ hold previous action otherwise
 如果上一轮推理还忙，新的请求会被跳过；控制循环继续保持最近一次动作。因此它不是
 “每 20 ms 必然得到一个新动作”，也没有仅凭源码即可证明的硬实时保证。
 
-## 10. 与当前 IsaacLab 导出的差异
+## 10. 训练、Python Sim2Sim 与 C++ 部署时序
 
-当前真相来源是 `docs/l5a_wf_training.md` 和导出目录中的 `policy_manifest.json`。
+三条路径都以 50 Hz 请求策略，但底层频率有意不同：
 
-| 契约 | 旧 C++ 基线 | 当前 IsaacLab |
-|---|---:|---:|
-| 物理周期 | `0.002 s`，500 Hz | `0.005 s`，200 Hz |
-| decimation | 10 | 4 |
-| 策略频率 | 50 Hz | 50 Hz |
-| 单帧 proprioception | 32 | 28 |
-| history | `[1,320]` flatten | `[1,10,28]` |
-| estimator | 单输入 `[1,320] -> [1,3]` | 单输入 `[1,10,28] -> [1,3]` |
-| actor | 单输入 `[1,35] -> [1,8]` | 三输入 `3 + 28 + 3 -> 8` |
-| command | 包在 32 维 obs | Actor 独立 `[N,3]` 输入 |
-| 固定 height | obs 中 1 维 | policy/history 中没有 |
-| 轮动作 scale | 0.5 | 1.0 |
-| 关节顺序 | 左腿、左轮、右腿、右轮 | 相同 |
-| 参数契约 | 两份手写 YAML | 导出的 `policy_manifest.json` |
+| 路径 | 物理/控制周期 | decimation | 策略请求周期 | 10 帧历史覆盖 |
+|---|---:|---:|---:|---:|
+| IsaacLab 训练 | `0.005 s`，200 Hz | 4 | `0.020 s` | `0.2 s` |
+| Python MuJoCo | `0.005 s`，200 Hz | 4 | `0.020 s` | `0.2 s` |
+| C++ MuJoCo | `0.002 s`，500 Hz | 10 | `0.020 s` | `0.2 s` |
+| C++ 真机 | 外部 500 Hz 调用 | 10 | `0.020 s` | `0.2 s` |
 
-当前 TorchScript schema 已核对为：
+C++ 保留 `2 ms × 10` 是为了延续旧 MuJoCo/真机底层控制时序，并不要求两套 MuJoCo
+后端的每个物理步都一致。`sim.cc` 也保留旧的 `mj_step()` 后调用 `MyController()`
+顺序，因此本周期算出的力矩在下一物理步生效，约有一个 2 ms 步长的写入延迟。
+
+异步线程可能因忙时跳过请求，所以 50 Hz 是提交节拍，不是新结果的硬实时保证。
+
+`observed_value` 当前调试通道定义为：1--8 原始 Actor 动作，9--11 命令，12--14
+估计基座线速度，15 推理耗时，16--43 当前 28 维本体观测，44 `standMode_step()`
+耗时，45 外部调用周期间隔。
+
+## 11. 模型替换、运行参数与构建
+
+当前 `platforms/l5a/control/module/` 只保留：
 
 ```text
-velocity_estimator.pt.forward(observation_history)
-policy.pt.forward(estimated_base_linear_velocity, proprioception, commands)
+policy.pt
+velocity_estimator.pt
+policy_manifest.json
 ```
 
-所以只替换 `control/module/*.pt` 会在 shape 或 forward 参数上失败。
+更换同一契约的新模型时，从导出目录手工覆盖这三个文件。两份 YAML 是 C++ 运行时参数
+来源；Manifest 随模型归档并用于人工校验，C++ 当前不在运行时解析 Manifest。旧 Gym 的
+`estimator*.pt`、`policy_1*.pt` 不再兼容，也不会进入安装目录。
 
-## 11. 从旧 Gym 迁移到当前 IsaacLab 的修改中心
+独立工程入口位于 `origin_code/sim2sim_cpp_and_sim2real/CMakeLists.txt`，仓库根目录不需要
+增加 CMake。推荐流程：
 
-建议保持外壳与核心边界，优先替换部署契约层：
+```bash
+cd /mnt/isaacdata/myproject/huilun_isaaclab/origin_code/sim2sim_cpp_and_sim2real
+./scripts/run_docker.sh
 
-1. `rl.h`：将固定维度、共享输入和模型接口改为当前 28/10/3/8 契约。
-2. `rl.cc`：重写 observation layout、历史 tensor shape、estimator/actor 调用和轮 scale。
-3. YAML/Manifest：以 `policy_manifest.json` 为部署真相，避免再次手工复制时序、缩放和顺序。
-4. 时序：C++ MuJoCo XML/RobotModel 从 2 ms 调整到 5 ms，并把 decimation 从 10 调整到 4。
-5. 模型文件：使用当前导出的 `velocity_estimator.pt` 和 `policy.pt`，不要沿用旧文件名含义。
-6. Sim2Real 输出：保留 6 腿位置/KP/KD + 2 轮速度 PD 力矩的物理语义。
-7. 验证顺序：先 C++ 离线 tensor 对拍，再 C++ MuJoCo，最后才进入实机低风险流程。
+# Docker 内：x86 C++ MuJoCo
+./scripts/build_and_install.sh
+./install/bin/sim_l5a
 
-可大体复用的部分：
+# Docker 内：ARM64 真机库，只生成本地产物
+./scripts/arm64_build_and_install.sh
+```
 
-- `RobotModel` 的 MuJoCo/实机状态适配框架；
-- `FSM` 和 EDamping 框架，但安全逻辑需要审计；
-- `standMode_types.h` ABI 和手柄/电机字段映射；
-- MuJoCo UI、URDF/XML/mesh 和构建骨架。
+x86 产物在 `install/`，ARM64 产物在 `install_arm64/`。ARM64 安装目录不再打包旧整机
+应用目录：不会生成根部 `double_wheel_app_v3`，也不会生成 `wheel/` 目录及其中的
+EtherCAT/XCP 程序、配置和闭源依赖。部署包只保留当前源码交叉编译出的
+`libstand_mode_lib.so`、控制库、脚本、YAML、模型和机器人资产。
 
-## 12. 已发现的源码风险点
+ARM 版本继续依赖板端预装的 `/usr/local/torch/lib`，脚本不会打 deb、上传、启动真机，
+也不会额外生成 `ARM64_BUNDLE_FILES.txt`、`ARM64_BUNDLE_SHA256.txt` 或
+`ARM64_BUNDLE_SIZE.txt`。若板端首次加载 PyTorch 2.7 导出的模型失败，再单独处理匹配
+版本的 ARM LibTorch 和相对 RPATH。
+
+## 12. 2026-08-06 本地验证结果与边界
+
+已完成：
+
+- 新模型 SHA256 与导出 Manifest 一致；Python/Torch 2.7 实测 Encoder
+  `[1,10,28] -> [1,3]`、三输入 Actor `-> [1,8]`，输出为有限值。
+- x86 Docker 中完成 CMake 配置、编译和安装；`SIM_ENABLE=ON`，生成
+  `install/bin/sim_l5a`，安装目录只包含当前三个模型归档文件。
+- C++ 冒烟入口实际完成模型加载、预热、异步请求和 8 维有限力矩输出。该临时入口
+  在打印通过后触发了旧 ROS/手柄全局清理路径的段错误，因此只证明策略前向与控制
+  核心可运行，不证明旧进程退出路径无问题。
+- `sim_l5a` 短时启动时确认 MuJoCo 3.2.2、ROS 节点和指定 XML 加载；由于程序默认
+  暂停且自动化强制结束会触发旧 UI 清理问题，本次未宣称完成连续闭环稳定性验证。
+- ARM64 Docker 交叉编译和安装通过；根部 `libstand_mode_lib.so`、`lib/librl.so`、YAML、
+  三份模型文件和机器人资产已安装。`librl.so` 的动态依赖包含 `libtorch_cpu.so`、
+  `libc10.so`，产物中未复制 LibTorch。后续精简后，`install_arm64/` 不再包含
+  `wheel/`、根部 `double_wheel_app_v3` 或 `ARM64_BUNDLE_*` 清单文件。
+
+尚未完成：RK3588 板端首次模型加载/前向、500 Hz 实时抖动测量、真机安全验证和上传。
+板端预装 LibTorch 能否读取 PyTorch 2.7 导出的模型，必须以板端测试为准。
+
+## 13. 已发现的源码风险点
 
 这些是静态审计提示，不等于已经在运行中复现：
 
@@ -362,7 +404,7 @@ policy.pt.forward(estimated_base_linear_velocity, proprioception, commands)
   需要目标板测量。
 - 构建脚本会删除 `install` 或 `install_arm64`；运行前应确认工作目录和目标路径。
 
-## 13. 快速检索入口
+## 14. 快速检索入口
 
 ```bash
 # C++ 两个运行时入口
