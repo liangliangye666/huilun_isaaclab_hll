@@ -52,6 +52,30 @@ from .wf_flat_env_cfg import (
     build_l5a_wf_export_metadata,
 )
 
+# 旧 Gym 对每个加权奖励率裁剪到 +/-5；IsaacLab 默认没有这层保护。
+UPSTAIRS_MAX_ABS_WEIGHTED_REWARD = 5.0
+# 轮动作需要约 16 的 raw action 才能覆盖 1 m/s，因此全局限幅不能按腿动作的
+# 常见 +/-1 设置；20 同时覆盖任务速度范围，并把旧配置的异常上限 100 降低 5 倍。
+UPSTAIRS_POLICY_ACTION_CLIP = 20.0
+# 8 维硬件顺序下分别监控腿位置 raw action 和轮速度 raw action。腿动作超过 4
+# 已对应超过 1 rad 的目标偏移；轮动作 20 对应 10 rad/s，覆盖 1 m/s 命令所需轮速。
+UPSTAIRS_ACTION_TERMINATION_LIMITS = (4.0, 4.0, 4.0, 20.0, 4.0, 4.0, 4.0, 20.0)
+UPSTAIRS_TRAINING_CONTRACT_REVISION = 2
+
+
+def _bounded_upstairs_reward(func, weight: float, params: dict[str, Any] | None = None) -> RewTerm:
+    """构造带旧 Gym 单项奖励率限幅的楼梯专用 RewardTerm。"""
+    return RewTerm(
+        func=mdp.BoundedReward,
+        weight=weight,
+        params={
+            "reward_func": func,
+            "reward_params": {} if params is None else params,
+            "term_weight": weight,
+            "max_abs_weighted_reward": UPSTAIRS_MAX_ABS_WEIGHTED_REWARD,
+        },
+    )
+
 
 @configclass
 class L5AWFUpstairsSceneCfg(L5AWFSceneCfg):
@@ -59,9 +83,9 @@ class L5AWFUpstairsSceneCfg(L5AWFSceneCfg):
 
     terrain = TerrainImporterCfg(
         prim_path="/World/ground",
-        terrain_type="generator",                   # 程序化生成地形
-        terrain_generator=UPSTAIRS_TERRAINS_CFG,    # 地形生成器的具体配置
-        max_init_terrain_level=5,                   # 课程学习的起始难度等级
+        terrain_type="generator",  # 程序化生成地形
+        terrain_generator=UPSTAIRS_TERRAINS_CFG,  # 地形生成器的具体配置
+        max_init_terrain_level=5,  # 课程学习的起始难度等级
         collision_group=-1,
         physics_material=sim_utils.RigidBodyMaterialCfg(
             friction_combine_mode="multiply",
@@ -73,13 +97,15 @@ class L5AWFUpstairsSceneCfg(L5AWFSceneCfg):
         debug_vis=False,
     )
 
-    height_scanner = RayCasterCfg(                  # 高度扫描器
-        prim_path=f"{{ENV_REGEX_NS}}/Robot/{BASE_BODY_NAME}",   # 扫描器挂载在机器人的 base_link 上，跟随机器人移动
-        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),    # 射线起点在 base_link 上方 20 米处，向下发射。
-        ray_alignment="yaw",    # 射线网格只跟随机器人的偏航角（yaw）旋转，不跟随 roll/pitch。这样测量的高度是相对于世界 z 轴的，不会因为机器人倾斜而产生错误读数
-        pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=(1.0, 0.6)),   # 网格采样模式：每 0.1 米一个采样点，覆盖机器人前后 1.0 米、左右 0.6 米的矩形区域。总共 (1.0/0.1+1) × (0.6/0.1+1) = 11 × 7 = 77 个采样点
+    height_scanner = RayCasterCfg(  # 高度扫描器
+        prim_path=f"{{ENV_REGEX_NS}}/Robot/{BASE_BODY_NAME}",  # 扫描器挂载在机器人的 base_link 上，跟随机器人移动
+        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),  # 射线起点在 base_link 上方 20 米处，向下发射。
+        ray_alignment="yaw",  # 射线网格只跟随机器人的偏航角（yaw）旋转，不跟随 roll/pitch。这样测量的高度是相对于世界 z 轴的，不会因为机器人倾斜而产生错误读数
+        pattern_cfg=patterns.GridPatternCfg(
+            resolution=0.1, size=(1.0, 0.6)
+        ),  # 网格采样模式：每 0.1 米一个采样点，覆盖机器人前后 1.0 米、左右 0.6 米的矩形区域。总共 (1.0/0.1+1) × (0.6/0.1+1) = 11 × 7 = 77 个采样点
         mesh_prim_paths=["/World/ground"],  # 射线只检测地形网格，忽略机器人自身和其他物体
-        debug_vis=False,    # 不显示扫描射线的可视化
+        debug_vis=False,  # 不显示扫描射线的可视化
     )
 
 
@@ -90,32 +116,32 @@ class UpstairsCommandsCfg:
     base_velocity = mdp.UpstairsVelocityCommandCfg(
         # 基础参数（继承自父类）
         asset_name="robot",
-        resampling_time_range=(10.0, 10.0), # 每 10 秒重新采样一次速度指令
-        rel_standing_envs=0.0,              # 父类的站立比例设为 0，因为子类用自己的 flat_standing_probability 来控制
-        rel_heading_envs=1.0,               # 100% 的环境使用航向控制（不是角速度跟踪）
-        heading_command=True,               # 启用航向控制模式
-        heading_control_stiffness=2.0,      # 航向 P 控制器增益：误差 1 rad → 角速度指令 2 rad/s
-        debug_vis=False,                    # 不显示调试可视化
+        resampling_time_range=(10.0, 10.0),  # 每 10 秒重新采样一次速度指令
+        rel_standing_envs=0.0,  # 父类的站立比例设为 0，因为子类用自己的 flat_standing_probability 来控制
+        rel_heading_envs=1.0,  # 100% 的环境使用航向控制（不是角速度跟踪）
+        heading_command=True,  # 启用航向控制模式
+        heading_control_stiffness=2.0,  # 航向 P 控制器增益：误差 1 rad → 角速度指令 2 rad/s
+        debug_vis=False,  # 不显示调试可视化
         # 楼梯特有参数
-        nonflat_lin_vel_x=(0.1, 1.0),       # 楼梯上前进速度 0.1~1.0 m/s，只有正值（不后退）
-        flat_standing_probability=0.1,      # 平地上 10% 概率站立
-        flat_column_count=1,                # 地形网格中第 0 列是平地，其余是楼梯
-        terrain_num_rows=UPSTAIRS_NUM_ROWS,             # 地形行数（难度等级数）
-        step_height_range=UPSTAIRS_STEP_HEIGHT_RANGE,   # 台阶高度范围
-        max_difficulty=UPSTAIRS_MAX_DIFFICULTY,         # 课程学习最大难度
+        nonflat_lin_vel_x=(0.1, 1.0),  # 楼梯上前进速度 0.1~1.0 m/s，只有正值（不后退）
+        flat_standing_probability=0.1,  # 平地上 10% 概率站立
+        flat_column_count=1,  # 地形网格中第 0 列是平地，其余是楼梯
+        terrain_num_rows=UPSTAIRS_NUM_ROWS,  # 地形行数（难度等级数）
+        step_height_range=UPSTAIRS_STEP_HEIGHT_RANGE,  # 台阶高度范围
+        max_difficulty=UPSTAIRS_MAX_DIFFICULTY,  # 课程学习最大难度
         # 目标点导航参数
         goal_forward_distances=(4.0, 8.0),  # 目标 0 在前方 4 米，目标 1 在前方 8 米
-        goal_center_probability=0.2,        # 20% 概率目标在正前方（无侧向偏移）
-        goal_lateral_range=(1.0, 4.0),      # 侧向偏移 1~4 米
+        goal_center_probability=0.2,  # 20% 概率目标在正前方（无侧向偏移）
+        goal_lateral_range=(1.0, 4.0),  # 侧向偏移 1~4 米
         goal_lateral_difficulty_scale=0.5,  # 难度越高，侧向偏移越小（先保直走）
-        goal_reach_radius=0.2,              # 进入目标 0.2 米范围内算"在目标附近"
-        goal_reach_delay=0.1,               # 需连续停留 0.1 秒才算到达
+        goal_reach_radius=0.2,  # 进入目标 0.2 米范围内算"在目标附近"
+        goal_reach_delay=0.1,  # 需连续停留 0.1 秒才算到达
         # 平地上的速度指令范围
         ranges=mdp.UniformVelocityCommandCfg.Ranges(
-            lin_vel_x=(-0.6, 1.0),          # 平地上可以后退 -0.6 m/s 到前进 1.0 m/s
-            lin_vel_y=(0.0, 0.0),           # 不要求侧向移动
-            ang_vel_z=(-1.0, 1.0),          # 角速度限制 ±1.0 rad/s（虽然实际用的是航向控制生成的角速度，这是硬限制）
-            heading=(-math.pi, math.pi),    # 航向目标可以是任意方向
+            lin_vel_x=(-0.6, 1.0),  # 平地上可以后退 -0.6 m/s 到前进 1.0 m/s
+            lin_vel_y=(0.0, 0.0),  # 不要求侧向移动
+            ang_vel_z=(-1.0, 1.0),  # 角速度限制 ±1.0 rad/s（虽然实际用的是航向控制生成的角速度，这是硬限制）
+            heading=(-math.pi, math.pi),  # 航向目标可以是任意方向
         ),
     )
 
@@ -188,43 +214,43 @@ class UpstairsRewardsCfg(RewardsCfg):
     # 旧任务分别跟踪 x/y/yaw，保留其权重和核函数；覆盖 WF-Flat 的合并项。
     track_lin_vel_xy = None
     track_ang_vel_z = None
-    track_lin_vel_x = RewTerm(
-        func=mdp.tracking_lin_vel_x_exp,
+    track_lin_vel_x = _bounded_upstairs_reward(
+        mdp.tracking_lin_vel_x_exp,
         weight=3.0,
         params={"command_name": "base_velocity", "sigma": 0.05},
     )
-    track_lin_vel_y = RewTerm(
-        func=mdp.tracking_lin_vel_y_exp,
+    track_lin_vel_y = _bounded_upstairs_reward(
+        mdp.tracking_lin_vel_y_exp,
         weight=1.0,
         params={"command_name": "base_velocity", "sigma": 0.05},
     )
-    track_ang_vel = RewTerm(
-        func=mdp.tracking_ang_vel_abs_exp,
+    track_ang_vel = _bounded_upstairs_reward(
+        mdp.tracking_ang_vel_abs_exp,
         weight=3.0,
         params={"command_name": "base_velocity", "sigma": 0.1},
     )
-    track_lin_vel_potential = RewTerm(
-        func=mdp.tracking_lin_vel_x_potential,
+    track_lin_vel_potential = _bounded_upstairs_reward(
+        mdp.tracking_lin_vel_x_potential,
         weight=1.0,
         params={"command_name": "base_velocity", "sigma": 0.05},
     )
-    track_ang_vel_potential = RewTerm(
-        func=mdp.tracking_ang_vel_potential,
+    track_ang_vel_potential = _bounded_upstairs_reward(
+        mdp.tracking_ang_vel_potential,
         weight=1.0,
         params={"command_name": "base_velocity", "sigma": 0.1},
     )
-    track_goal = RewTerm(
-        func=mdp.tracking_goal_progress,
+    track_goal = _bounded_upstairs_reward(
+        mdp.tracking_goal_progress,
         weight=2.0,
         params={"command_name": "base_velocity"},
     )
-    opposite_base_vel = RewTerm(
-        func=mdp.opposite_base_velocity,
+    opposite_base_vel = _bounded_upstairs_reward(
+        mdp.opposite_base_velocity,
         weight=-4.0,
         params={"command_name": "base_velocity"},
     )
-    opposite_wheel_vel = RewTerm(
-        func=mdp.opposite_wheel_velocity,
+    opposite_wheel_vel = _bounded_upstairs_reward(
+        mdp.opposite_wheel_velocity,
         weight=-1.0,
         params={
             "command_name": "base_velocity",
@@ -232,34 +258,34 @@ class UpstairsRewardsCfg(RewardsCfg):
         },
     )
 
-    feet_contact_number = RewTerm(func=mdp.feet_contact_number, weight=5.0, params=_gait_params())
-    feet_clearance = RewTerm(
-        func=mdp.feet_clearance_error,
+    feet_contact_number = _bounded_upstairs_reward(mdp.feet_contact_number, weight=5.0, params=_gait_params())
+    feet_clearance = _bounded_upstairs_reward(
+        mdp.feet_clearance_error,
         weight=-5.0,
         params={**_gait_params(), "sigma": 0.05},
     )
-    swing_foot_lift = RewTerm(func=mdp.swing_foot_lift, weight=10.0, params=_gait_params())
-    triggered_leg_up_vel = RewTerm(func=mdp.triggered_leg_up_velocity, weight=10.0, params=_gait_params())
-    wrong_leg_lift = RewTerm(
-        func=mdp.wrong_leg_lift,
+    swing_foot_lift = _bounded_upstairs_reward(mdp.swing_foot_lift, weight=10.0, params=_gait_params())
+    triggered_leg_up_vel = _bounded_upstairs_reward(mdp.triggered_leg_up_velocity, weight=10.0, params=_gait_params())
+    wrong_leg_lift = _bounded_upstairs_reward(
+        mdp.wrong_leg_lift,
         weight=-10.0,
         params={**_gait_params(), "sigma": 0.05},
     )
-    triggered_leg_action_dir = RewTerm(
-        func=mdp.triggered_leg_action_direction,
+    triggered_leg_action_dir = _bounded_upstairs_reward(
+        mdp.triggered_leg_action_direction,
         weight=10.0,
-        params=_gait_params(),
+        params={**_gait_params(), "action_delta_scale": 0.25, "maximum_reward": 0.5},
     )
-    wheel_zero_velocity = RewTerm(
-        func=mdp.wheel_zero_velocity_during_swing,
+    wheel_zero_velocity = _bounded_upstairs_reward(
+        mdp.wheel_zero_velocity_during_swing,
         weight=0.5,
         params={
             **_gait_params(),
             "wheel_joint_cfg": SceneEntityCfg("robot", joint_names=WHEEL_JOINT_NAMES, preserve_order=True),
         },
     )
-    foot_landing_vel = RewTerm(
-        func=mdp.foot_landing_velocity,
+    foot_landing_vel = _bounded_upstairs_reward(
+        mdp.foot_landing_velocity,
         weight=-5.0,
         params={
             "wheel_radius": L5A_WHEEL_RADIUS,
@@ -271,8 +297,8 @@ class UpstairsRewardsCfg(RewardsCfg):
             "safe_landing_velocity": 0.1,
         },
     )
-    air_wheel_vel = RewTerm(
-        func=mdp.air_wheel_velocity,
+    air_wheel_vel = _bounded_upstairs_reward(
+        mdp.air_wheel_velocity,
         weight=-2.0,
         params={
             "wheel_joint_cfg": SceneEntityCfg("robot", joint_names=WHEEL_JOINT_NAMES, preserve_order=True),
@@ -281,8 +307,8 @@ class UpstairsRewardsCfg(RewardsCfg):
             "velocity_scale": 3.0,
         },
     )
-    wheel_spin = RewTerm(
-        func=mdp.wheel_slip,
+    wheel_spin = _bounded_upstairs_reward(
+        mdp.wheel_slip,
         weight=-20.0,
         params={
             "wheel_radius": L5A_WHEEL_RADIUS,
@@ -291,8 +317,8 @@ class UpstairsRewardsCfg(RewardsCfg):
             "slip_tolerance": 0.1,
         },
     )
-    feet_contact_forces = RewTerm(
-        func=mdp.wheel_contact_impact,
+    feet_contact_forces = _bounded_upstairs_reward(
+        mdp.wheel_contact_impact,
         weight=-5.0,
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=WHEEL_BODY_NAMES, preserve_order=True),
@@ -300,10 +326,26 @@ class UpstairsRewardsCfg(RewardsCfg):
             "contact_force_scale": 100.0,
         },
     )
-    default_pos = RewTerm(
-        func=mdp.joint_deviation_from_default_l2,
+    default_pos = _bounded_upstairs_reward(
+        mdp.joint_deviation_from_default_l2,
         weight=-1.0,
         params={"asset_cfg": SceneEntityCfg("robot", joint_names=LEG_JOINT_NAMES, preserve_order=True)},
+    )
+
+    # 采用旧上楼配置的 -0.03/-0.03，并保留同样的单项奖励率限幅。
+    action_rate = _bounded_upstairs_reward(mdp.action_rate_l2, weight=-0.03)
+    action_smoothness = _bounded_upstairs_reward(mdp.action_smooth_l2, weight=-0.03)
+
+    # 失败终止必须显式扣分，尤其不能让动作越界成为快速重置并刷正奖励的捷径。
+    failure_termination = RewTerm(
+        func=mdp.is_terminated_term,
+        weight=-50.0,
+        params={"term_keys": ["base_contact", "bad_orientation", "base_height"]},
+    )
+    action_limit_termination = RewTerm(
+        func=mdp.is_terminated_term,
+        weight=-200.0,
+        params={"term_keys": ["action_out_of_limits"]},
     )
 
     # 保留 WF-Flat 的几何奖励实现/权重，并把绝对世界高度替换为局部地形相对高度。
@@ -349,6 +391,10 @@ class UpstairsTerminationsCfg(TerminationsCfg):
     base_height = DoneTerm(
         func=mdp.root_height_below_local_terrain,
         params={"minimum_height": 0.35, "sensor_cfg": SceneEntityCfg("height_scanner")},
+    )
+    action_out_of_limits = DoneTerm(
+        func=mdp.action_out_of_limits,
+        params={"threshold": UPSTAIRS_ACTION_TERMINATION_LIMITS},
     )
 
 
@@ -432,9 +478,7 @@ def build_l5a_wf_upstairs_deployment_metadata() -> dict[str, Any]:
     """构造与 WF-Flat 动作/Actor 兼容、但 checkpoint 家族独立的训练元数据。"""
     env_cfg = L5AWFUpstairsEnvCfg()
     scan_cfg = env_cfg.scene.height_scanner.pattern_cfg
-    scan_dim = (round(scan_cfg.size[0] / scan_cfg.resolution) + 1) * (
-        round(scan_cfg.size[1] / scan_cfg.resolution) + 1
-    )
+    scan_dim = (round(scan_cfg.size[0] / scan_cfg.resolution) + 1) * (round(scan_cfg.size[1] / scan_cfg.resolution) + 1)
     critic_layout = [
         {"name": "wf_privileged_state", "size": 68},
         {"name": "terrain_height_scan", "size": scan_dim},
@@ -451,6 +495,10 @@ def build_l5a_wf_upstairs_deployment_metadata() -> dict[str, Any]:
         {
             "source_env_cfg": "L5AWFUpstairsEnvCfg",
             "task_family": "l5a_wf_upstairs",
+            "training_contract_revision": UPSTAIRS_TRAINING_CONTRACT_REVISION,
+            "policy_output_clip": UPSTAIRS_POLICY_ACTION_CLIP,
+            "action_termination_limits": list(UPSTAIRS_ACTION_TERMINATION_LIMITS),
+            "max_abs_weighted_upstairs_reward_rate": UPSTAIRS_MAX_ABS_WEIGHTED_REWARD,
             "actor_proprioception_dim": 28,
             "critic_privileged_dim": critic_dim,
             "critic_privileged_layout": critic_layout,

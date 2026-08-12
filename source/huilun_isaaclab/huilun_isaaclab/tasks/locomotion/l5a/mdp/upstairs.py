@@ -5,12 +5,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import math
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 import torch
 
 from isaaclab.assets import Articulation
-from isaaclab.managers import SceneEntityCfg
+from isaaclab.managers import ManagerTermBase, RewardTermCfg, SceneEntityCfg
 from isaaclab.sensors import ContactSensor, RayCaster
 from isaaclab.utils import math as math_utils
 
@@ -18,6 +20,57 @@ from .commands import UpstairsVelocityCommand
 
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
+
+
+class BoundedReward(ManagerTermBase):
+    """按旧 Gym 的单项奖励裁剪语义限制加权奖励率。
+
+    旧上楼任务会在乘权重后把每个奖励项裁到 ``[-5, 5]``，再乘控制周期。
+    IsaacLab 的 RewardManager 默认不做这层裁剪。这个 task-local 包装器在不修改
+    IsaacLab 框架的前提下复现该行为，并在初始化时解析被包装函数使用的
+    ``SceneEntityCfg``。
+    """
+
+    def __init__(self, cfg: RewardTermCfg, env: ManagerBasedRLEnv):
+        super().__init__(cfg, env)
+        reward_func = cfg.params["reward_func"]
+        reward_params = cfg.params["reward_params"]
+        term_weight = float(cfg.params["term_weight"])
+        max_abs_weighted_reward = float(cfg.params["max_abs_weighted_reward"])
+
+        if not callable(reward_func):
+            raise TypeError(f"BoundedReward reward_func must be callable, got {type(reward_func).__name__}.")
+        if not isinstance(reward_params, dict):
+            raise TypeError(f"BoundedReward reward_params must be a dict, got {type(reward_params).__name__}.")
+        if term_weight == 0.0 or max_abs_weighted_reward <= 0.0:
+            raise ValueError("BoundedReward requires a non-zero term_weight and a positive reward-rate limit.")
+        if not math.isclose(float(cfg.weight), term_weight, rel_tol=0.0, abs_tol=1.0e-12):
+            raise ValueError(f"BoundedReward term_weight={term_weight} must match RewardTermCfg.weight={cfg.weight}.")
+
+        for param_name, value in reward_params.items():
+            if isinstance(value, SceneEntityCfg):
+                value.resolve(env.scene)
+            elif isinstance(value, dict) and any(isinstance(item, SceneEntityCfg) for item in value.values()):
+                raise TypeError(
+                    f"BoundedReward reward_params[{param_name!r}] contains a nested SceneEntityCfg; "
+                    "keep scene entity parameters at the top level so they can be resolved once."
+                )
+
+        self._reward_func: Callable[..., torch.Tensor] = reward_func
+        self._reward_params: dict[str, Any] = reward_params
+        self._max_abs_raw_reward = max_abs_weighted_reward / abs(term_weight)
+
+    def __call__(
+        self,
+        env: ManagerBasedRLEnv,
+        reward_func: Callable[..., torch.Tensor],
+        reward_params: dict[str, Any],
+        term_weight: float,
+        max_abs_weighted_reward: float,
+    ) -> torch.Tensor:
+        del reward_func, reward_params, term_weight, max_abs_weighted_reward
+        raw_reward = self._reward_func(env, **self._reward_params)
+        return torch.clamp(raw_reward, -self._max_abs_raw_reward, self._max_abs_raw_reward)
 
 
 def _upstairs_command(env: ManagerBasedRLEnv, command_name: str) -> UpstairsVelocityCommand:
@@ -380,12 +433,18 @@ def triggered_leg_action_direction(
     wheel_cfg: SceneEntityCfg,
     sensor_cfg: SceneEntityCfg,
     height_sensor_cfg: SceneEntityCfg,
+    action_delta_scale: float = 0.25,
+    maximum_reward: float = 0.5,
 ) -> torch.Tensor:
+    """奖励触发腿的正确动作方向，但不允许通过无限放大动作刷奖励。"""
+    if action_delta_scale <= 0.0 or maximum_reward <= 0.0:
+        raise ValueError("action_delta_scale and maximum_reward must be positive.")
     state = _gait_state(env, command_name, wheel_radius, wheel_cfg, sensor_cfg, height_sensor_cfg)
     delta = env.action_manager.action - env.action_manager.prev_action
     left_lift = torch.relu(delta[:, 1]) + torch.relu(-delta[:, 2])
     right_lift = torch.relu(delta[:, 5]) + torch.relu(-delta[:, 6])
-    return state.swing_mask[:, 0] * left_lift + state.swing_mask[:, 1] * right_lift
+    selected_lift = state.swing_mask[:, 0] * left_lift + state.swing_mask[:, 1] * right_lift
+    return maximum_reward * (1.0 - torch.exp(-selected_lift / action_delta_scale))
 
 
 def wheel_zero_velocity_during_swing(

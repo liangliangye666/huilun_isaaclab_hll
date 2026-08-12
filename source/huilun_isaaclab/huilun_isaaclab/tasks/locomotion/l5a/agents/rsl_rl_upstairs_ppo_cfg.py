@@ -9,7 +9,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg
 
 from huilun_isaaclab.learning.rsl_rl import VelocityEstimatorActorCriticCfg, VelocityEstimatorPPOCfg
 
-from ..upstairs_env_cfg import build_l5a_wf_upstairs_deployment_metadata
+from ..upstairs_env_cfg import UPSTAIRS_POLICY_ACTION_CLIP, build_l5a_wf_upstairs_deployment_metadata
 
 
 @configclass
@@ -21,7 +21,7 @@ class L5AWFUpstairsPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     max_iterations = 100000
     save_interval = 500
     experiment_name = "l5a_wf_upstairs"
-    clip_actions = 100.0
+    clip_actions = UPSTAIRS_POLICY_ACTION_CLIP
     obs_groups = {
         "policy": ["policy", "commands"],
         "critic": ["critic", "commands"],
