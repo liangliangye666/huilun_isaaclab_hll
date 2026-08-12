@@ -26,7 +26,7 @@ SOURCE_DIR="$(mktemp -d)"
 trap 'rm -rf "${SOURCE_DIR}"' EXIT
 
 # 放到自己使用的目录下
-prototype="l5b"
+prototype="l5a"
 install_dir="wheel-upstairs"
 package_name="${prototype}-${install_dir}"
 user_bin_dir="${SOURCE_DIR}/user_space/user/${install_dir}"

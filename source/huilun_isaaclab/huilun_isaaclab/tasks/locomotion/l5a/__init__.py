@@ -48,3 +48,25 @@ gym.register(
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:L5AWFPPORunnerCfg",
     },
 )
+
+# WF 上楼梯训练：Actor 保持盲走契约，Critic 使用高度扫描与楼梯特权状态。
+gym.register(
+    id="Huilun-L5A-WF-Upstairs-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.upstairs_env_cfg:L5AWFUpstairsEnvCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_upstairs_ppo_cfg:L5AWFUpstairsPPORunnerCfg",
+    },
+)
+
+# 上楼梯评估/导出：关闭观测噪声、共享动作延迟和动力学随机化。
+gym.register(
+    id="Huilun-L5A-WF-Upstairs-Play-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.upstairs_env_cfg:L5AWFUpstairsEnvCfg_PLAY",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_upstairs_ppo_cfg:L5AWFUpstairsPPORunnerCfg",
+    },
+)

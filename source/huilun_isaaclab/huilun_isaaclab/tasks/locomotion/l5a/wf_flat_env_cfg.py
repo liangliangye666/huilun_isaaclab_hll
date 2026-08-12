@@ -73,19 +73,19 @@ class L5AWFSceneCfg(InteractiveSceneCfg):
     """
 
     terrain = TerrainImporterCfg(
-        prim_path="/World/ground",
-        terrain_type="plane",
+        prim_path="/World/ground",          # 地形在 USD 场景中的路径
+        terrain_type="plane",               # 平坦地面
         terrain_generator=None,
         max_init_terrain_level=0,
         collision_group=-1,
-        physics_material=sim_utils.RigidBodyMaterialCfg(
-            friction_combine_mode="multiply",
-            restitution_combine_mode="multiply",
-            static_friction=1.0,
-            dynamic_friction=1.0,
+        physics_material=sim_utils.RigidBodyMaterialCfg(    # 地面的物理材质参数
+            friction_combine_mode="multiply",       # 摩擦系数合并方式为相乘：最终摩擦 = 地面摩擦 × 机器人侧摩擦。这意味着如果机器人侧随机到了 0.5，地面是 1.0，最终就是 0.5
+            restitution_combine_mode="multiply",    # 弹性系数也是相乘
+            static_friction=1.0,                    # 地面静摩擦系数为 1.0
+            dynamic_friction=1.0,                   # 地面动摩擦系数为 1.0
             # multiply 模式下地面设为 1.0，才能保留机器人侧随机 restitution；
             # 若这里为 0，任意机器人恢复系数与其相乘后都会失效。
-            restitution=1.0,
+            restitution=1.0,                        # 地面弹性恢复系数为 1.0（完全弹性）。设置为 1.0 的原因是用了 multiply 合并模式——如果地面设为 0.5，机器人侧随机到 0.5，最终就只有 0.25，太软了。设为 1.0 让机器人侧的随机化值直接决定最终摩擦
         ),
         debug_vis=False,
     )

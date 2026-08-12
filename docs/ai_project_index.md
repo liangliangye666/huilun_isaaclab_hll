@@ -279,8 +279,9 @@ sim2sim.py
 50 Hz 策略时序，而 Python MuJoCo 保持训练一致的 5 ms × 4。
 
 构建入口仍是小工程自己的脚本：Docker 内运行 `./scripts/build_and_install.sh` 生成
-`install/bin/sim_l5a`，运行 `./scripts/arm64_build_and_install.sh` 只生成
-`install_arm64/`。换模型时手工覆盖 `platforms/l5a/control/module/` 中的
+`install/bin/sim_l5a`，运行 `./scripts/arm64_build_and_install.sh` 生成
+`install_arm64/` 并在其中输出 `.deb` 包；同步和传输仍需手动完成。换模型时手工覆盖
+`platforms/l5a/control/module/` 中的
 `policy.pt`、`velocity_estimator.pt`、`policy_manifest.json`，随后重新构建安装。
 
 2026-08-06 已验证新 TorchScript shape/SHA256、x86 配置编译安装和模型预热/异步前向，

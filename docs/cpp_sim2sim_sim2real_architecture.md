@@ -360,8 +360,9 @@ x86 产物在 `install/`，ARM64 产物在 `install_arm64/`。ARM64 安装目录
 EtherCAT/XCP 程序、配置和闭源依赖。部署包只保留当前源码交叉编译出的
 `libstand_mode_lib.so`、控制库、脚本、YAML、模型和机器人资产。
 
-ARM 版本继续依赖板端预装的 `/usr/local/torch/lib`，脚本不会打 deb、上传、启动真机，
-也不会额外生成 `ARM64_BUNDLE_FILES.txt`、`ARM64_BUNDLE_SHA256.txt` 或
+ARM 版本继续依赖板端预装的 `/usr/local/torch/lib`，脚本会在 `install_arm64/` 下生成
+`.deb` 包，但不会上传、同步或启动真机，也不会额外生成
+`ARM64_BUNDLE_FILES.txt`、`ARM64_BUNDLE_SHA256.txt` 或
 `ARM64_BUNDLE_SIZE.txt`。若板端首次加载 PyTorch 2.7 导出的模型失败，再单独处理匹配
 版本的 ARM LibTorch 和相对 RPATH。
 
