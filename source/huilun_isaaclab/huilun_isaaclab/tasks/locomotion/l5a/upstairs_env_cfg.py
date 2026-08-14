@@ -416,7 +416,7 @@ class UpstairsCurriculumCfg:
 class L5AWFUpstairsEnvCfg(L5AWFFlatEnvCfg):
     """独立的 L5A WF 上楼梯训练任务。"""
 
-    scene: L5AWFUpstairsSceneCfg = L5AWFUpstairsSceneCfg(num_envs=4096, env_spacing=2.5)
+    scene: L5AWFUpstairsSceneCfg = L5AWFUpstairsSceneCfg(num_envs=8192, env_spacing=2.5)
     observations: UpstairsObservationsCfg = UpstairsObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
     commands: UpstairsCommandsCfg = UpstairsCommandsCfg()

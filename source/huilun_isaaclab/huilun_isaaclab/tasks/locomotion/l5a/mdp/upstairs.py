@@ -110,6 +110,22 @@ def _nearest_terrain_height(
     return torch.gather(ray_hits[:, :, 2], 1, nearest_ids)
 
 
+def _step_cache(env: ManagerBasedRLEnv) -> dict[tuple[Any, ...], torch.Tensor]:
+    """Return task-local tensors cached for the current control step only."""
+    step = env.common_step_counter
+    cached = getattr(env, "_l5a_upstairs_step_cache", None)
+    if cached is None or cached[0] != step:
+        cached = (step, {})
+        env._l5a_upstairs_step_cache = cached
+    return cached[1]
+
+
+def _entity_ids_key(ids: list[int] | slice) -> tuple[Any, ...]:
+    if isinstance(ids, slice):
+        return ("slice", ids.start, ids.stop, ids.step)
+    return tuple(ids)
+
+
 def wheel_clearance(
     env: ManagerBasedRLEnv,
     wheel_radius: float,
@@ -117,10 +133,22 @@ def wheel_clearance(
     sensor_cfg: SceneEntityCfg,
 ) -> torch.Tensor:
     """轮胎最低点相对最近扫描地面的净空，shape 为 ``[N, 2]``。"""
+    cache = _step_cache(env)
+    key = (
+        "wheel_clearance",
+        wheel_cfg.name,
+        _entity_ids_key(wheel_cfg.body_ids),
+        sensor_cfg.name,
+        float(wheel_radius),
+    )
+    if key in cache:
+        return cache[key]
     asset: Articulation = env.scene[wheel_cfg.name]
     wheel_pos = asset.data.body_pos_w[:, wheel_cfg.body_ids]
     terrain_height = _nearest_terrain_height(env, wheel_pos[:, :, :2], sensor_cfg)
-    return torch.clamp(wheel_pos[:, :, 2] - terrain_height - wheel_radius, min=0.0)
+    clearance = torch.clamp(wheel_pos[:, :, 2] - terrain_height - wheel_radius, min=0.0)
+    cache[key] = clearance
+    return clearance
 
 
 def local_terrain_height(
@@ -129,8 +157,14 @@ def local_terrain_height(
     asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
 ) -> torch.Tensor:
     """返回基座水平投影处最近的扫描地形高度。"""
+    cache = _step_cache(env)
+    key = ("local_terrain_height", sensor_cfg.name, asset_cfg.name)
+    if key in cache:
+        return cache[key]
     asset: Articulation = env.scene[asset_cfg.name]
-    return _nearest_terrain_height(env, asset.data.root_pos_w[:, None, :2], sensor_cfg).squeeze(1)
+    terrain_height = _nearest_terrain_height(env, asset.data.root_pos_w[:, None, :2], sensor_cfg).squeeze(1)
+    cache[key] = terrain_height
+    return terrain_height
 
 
 def terrain_relative_base_height_l1(
@@ -198,13 +232,12 @@ class _UpstairsGaitState:
         self.active = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
         self.swing_index = torch.zeros(env.num_envs, dtype=torch.long, device=env.device)
         self.elapsed = torch.zeros(env.num_envs, device=env.device)
+        self._swing_mask = torch.zeros(env.num_envs, 2, device=env.device)
         self.last_update_step = -1
 
     @property
     def swing_mask(self) -> torch.Tensor:
-        mask = torch.zeros(self.active.shape[0], 2, device=self.active.device)
-        mask.scatter_(1, self.swing_index.unsqueeze(1), self.active.float().unsqueeze(1))
-        return mask
+        return self._swing_mask
 
     @property
     def stance_mask(self) -> torch.Tensor:
@@ -233,10 +266,11 @@ def _gait_state(
     state.last_update_step = env.common_step_counter
 
     reset_mask = env.episode_length_buf <= 1
-    if torch.any(reset_mask):
-        state.blocked_history[reset_mask] = False
-        state.active[reset_mask] = False
-        state.elapsed[reset_mask] = 0.0
+    # Do not branch on a CUDA tensor here. ``if torch.any(...)`` forces a
+    # device-to-host synchronization once per control step.
+    state.blocked_history.masked_fill_(reset_mask[:, None, None], False)
+    state.active.masked_fill_(reset_mask, False)
+    state.elapsed.masked_fill_(reset_mask, 0.0)
 
     command = _upstairs_command(env, command_name)
     force_b = _wheel_contact_force_b(env, sensor_cfg, wheel_cfg)
@@ -261,6 +295,8 @@ def _gait_state(
     finished = state.active & ((selected_clearance >= unlock_ratio * target) | (state.elapsed >= swing_timeout))
     state.active[finished] = False
     state.elapsed[finished] = 0.0
+    state._swing_mask.zero_()
+    state._swing_mask.scatter_(1, state.swing_index.unsqueeze(1), state.active.float().unsqueeze(1))
     return state
 
 

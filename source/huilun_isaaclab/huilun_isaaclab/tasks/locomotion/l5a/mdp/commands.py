@@ -54,6 +54,10 @@ class UpstairsVelocityCommand(UniformVelocityCommand):
             这个信息最终会进入 Critic 的特权观测，让 Critic 知道当前台阶有多高，从而更准确地评估状态价值。
         '''
         self.terrain_step_height = torch.zeros(self.num_envs, device=self.device)
+        # Reuse the environment index tensor when selecting each environment's
+        # active goal.  Rebuilding it in every property access launches an
+        # unnecessary CUDA kernel in several reward/observation terms per step.
+        self._all_env_ids = torch.arange(self.num_envs, device=self.device)
         '''
         目标距离指标
             记录每个环境中机器人到当前目标点的距离。
@@ -71,8 +75,7 @@ class UpstairsVelocityCommand(UniformVelocityCommand):
     @property
     def current_goal_w(self) -> torch.Tensor:
         """当前阶段目标的世界坐标，shape 为 ``[N, 3]``。"""
-        env_ids = torch.arange(self.num_envs, device=self.device)   # 生成 [0, 1, 2, ..., 4095] 的整数张量，每个元素是一个环境的 ID。
-        return self.goal_positions_w[env_ids, self.current_goal_index]
+        return self.goal_positions_w[self._all_env_ids, self.current_goal_index]
     '''
     回顾数据结构：
         self.g`oal_positions_w 形状是 [4096, 2, 3]

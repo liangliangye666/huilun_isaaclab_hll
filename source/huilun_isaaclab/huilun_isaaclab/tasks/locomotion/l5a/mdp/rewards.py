@@ -25,20 +25,36 @@ if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
 
 
-def _body_pos_b(asset: Articulation, body_ids: list[int] | slice) -> torch.Tensor:
+def _body_pos_b(
+    env: ManagerBasedRLEnv,
+    asset: Articulation,
+    body_ids: list[int] | slice,
+) -> torch.Tensor:
     """把选中刚体位置从世界系转换到机器人基座坐标系。
 
     先减去 root 世界位置得到相对向量，再用 root 四元数的逆旋转消除机体姿态。
     后续轮距/轮高奖励因此描述"相对机身的腿轮构型"，不会把机器人全局位置或
     朝向误当成几何误差。
     """
+    ids_key = (
+        ("slice", body_ids.start, body_ids.stop, body_ids.step)
+        if isinstance(body_ids, slice)
+        else tuple(body_ids)
+    )
+    cache_key = (env.common_step_counter, asset.cfg.prim_path, ids_key)
+    cache = getattr(env, "_l5a_body_pos_b_cache", None)
+    if cache is not None and cache[0] == cache_key:
+        return cache[1]
+
     # ① 取出世界系刚体位置 [N, num_bodies, 3]
     body_pos_w = asset.data.body_pos_w[:, body_ids, :]
     # ② 减去基座世界位置 → 世界系中的相对向量
     rel_pos_w = body_pos_w - asset.data.root_pos_w[:, None, :]
     # ③ 用基座四元数的逆消除机体旋转 → 基座系坐标
     root_quat_w = asset.data.root_quat_w[:, None, :].expand(-1, rel_pos_w.shape[1], -1)
-    return quat_apply_inverse(root_quat_w, rel_pos_w)
+    body_pos_b = quat_apply_inverse(root_quat_w, rel_pos_w)
+    env._l5a_body_pos_b_cache = (cache_key, body_pos_b)
+    return body_pos_b
 
 
 '''
@@ -73,7 +89,7 @@ def leg_y_symmetry_exp(env: ManagerBasedRLEnv, std: float, asset_cfg: SceneEntit
     比较的是左右轮 ``|y|`` 的差，而非强制指定绝对轮距；完全镜像时返回 1。
     """
     asset: Articulation = env.scene[asset_cfg.name]
-    wheel_pos_b = _body_pos_b(asset, asset_cfg.body_ids)
+    wheel_pos_b = _body_pos_b(env, asset, asset_cfg.body_ids)
     symmetry_error = torch.abs(wheel_pos_b[:, 0, 1]) - torch.abs(wheel_pos_b[:, 1, 1])
     return torch.exp(-torch.square(symmetry_error) / std**2)
 
@@ -88,7 +104,7 @@ def same_wheel_x_position_l1(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) 
     通常配负权重，抑制一侧轮相对另一侧明显前伸/后缩，保持两轮轴线对齐。
     """
     asset: Articulation = env.scene[asset_cfg.name]
-    wheel_pos_b = _body_pos_b(asset, asset_cfg.body_ids)
+    wheel_pos_b = _body_pos_b(env, asset, asset_cfg.body_ids)
     return torch.abs(wheel_pos_b[:, 0, 0] - wheel_pos_b[:, 1, 0])
 
 
@@ -98,7 +114,7 @@ def same_wheel_z_position_l2(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) 
     通常配负权重，抑制左右腿高度不一致导致的机身侧倾构型。
     """
     asset: Articulation = env.scene[asset_cfg.name]
-    wheel_pos_b = _body_pos_b(asset, asset_cfg.body_ids)
+    wheel_pos_b = _body_pos_b(env, asset, asset_cfg.body_ids)
     return torch.square(wheel_pos_b[:, 0, 2] - wheel_pos_b[:, 1, 2])
 
 
@@ -143,7 +159,7 @@ def wheel_distance_alignment_exp(
     ``v_y=0``，名义轮距权重将保持最大。
     """
     asset: Articulation = env.scene[asset_cfg.name]
-    wheel_pos_b = _body_pos_b(asset, asset_cfg.body_ids)
+    wheel_pos_b = _body_pos_b(env, asset, asset_cfg.body_ids)
     distance = torch.abs(wheel_pos_b[:, 0, 1] - wheel_pos_b[:, 1, 1])
     # 范围越界惩罚
     outside_error = torch.clamp(min_distance - distance, min=0.0)
